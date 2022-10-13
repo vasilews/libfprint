@@ -410,6 +410,7 @@ if get_option('introspection')
             'GObject-2.0',
             'GUsb-1.0',
         ],
+        fatal_warnings: true,
         install : true)
     libfprint_gir = libfprint_girtarget[0]
     libfprint_typelib = libfprint_girtarget[1]
