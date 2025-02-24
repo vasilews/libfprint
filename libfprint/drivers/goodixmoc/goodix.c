@@ -238,7 +238,7 @@ fp_cmd_run_state (FpiSsm   *ssm,
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_CMD_SEND:
+    case GOODIX_CMD_SEND:
       if (self->cmd_transfer)
         {
           self->cmd_transfer->ssm = ssm;
@@ -254,7 +254,7 @@ fp_cmd_run_state (FpiSsm   *ssm,
         }
       break;
 
-    case FP_CMD_GET_ACK:
+    case GOODIX_CMD_GET_ACK:
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_bulk (transfer, EP_IN, EP_IN_MAX_BUF_SIZE);
@@ -266,7 +266,7 @@ fp_cmd_run_state (FpiSsm   *ssm,
 
       break;
 
-    case FP_CMD_GET_DATA:
+    case GOODIX_CMD_GET_DATA:
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_bulk (transfer, EP_IN, EP_IN_MAX_BUF_SIZE);
@@ -354,7 +354,7 @@ goodix_sensor_cmd (FpiDeviceGoodixMoc *self,
 
   self->cmd_ssm = fpi_ssm_new (FP_DEVICE (self),
                                fp_cmd_run_state,
-                               FP_CMD_NUM_STATES);
+                               GOODIX_CMD_NUM_STATES);
 
   fpi_ssm_set_data (self->cmd_ssm, data, (GDestroyNotify) fp_cmd_ssm_done_data_free);
 
@@ -493,7 +493,7 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_VERIFY_PWR_BTN_SHIELD_ON:
+    case GOODIX_VERIFY_PWR_BTN_SHIELD_ON:
       goodix_sensor_cmd (self, MOC_CMD0_PWR_BTN_SHIELD, MOC_CMD1_PWR_BTN_SHIELD_ON,
                          false,
                          NULL,
@@ -501,7 +501,7 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_pwr_btn_shield_cb);
       break;
 
-    case FP_VERIFY_CAPTURE:
+    case GOODIX_VERIFY_CAPTURE:
       fpi_device_report_finger_status_changes (device,
                                                FP_FINGER_STATUS_NEEDED,
                                                FP_FINGER_STATUS_NONE);
@@ -512,7 +512,7 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_verify_capture_cb);
       break;
 
-    case FP_VERIFY_IDENTIFY:
+    case GOODIX_VERIFY_IDENTIFY:
       goodix_sensor_cmd (self, MOC_CMD0_IDENTIFY, MOC_CMD1_DEFAULT,
                          false,
                          (const guint8 *) nonce,
@@ -520,7 +520,7 @@ fp_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_verify_cb);
       break;
 
-    case FP_VERIFY_PWR_BTN_SHIELD_OFF:
+    case GOODIX_VERIFY_PWR_BTN_SHIELD_OFF:
       goodix_sensor_cmd (self, MOC_CMD0_PWR_BTN_SHIELD, MOC_CMD1_PWR_BTN_SHIELD_OFF,
                          false,
                          NULL,
@@ -682,7 +682,7 @@ fp_enroll_capture_cb (FpiDeviceGoodixMoc  *self,
                                   self->enroll_stage,
                                   NULL,
                                   fpi_device_retry_new (FP_DEVICE_RETRY_GENERAL));
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_CAPTURE);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_ENROLL_CAPTURE);
       return;
     }
   fpi_device_report_finger_status_changes (FP_DEVICE (self),
@@ -700,7 +700,7 @@ fp_enroll_capture_cb (FpiDeviceGoodixMoc  *self,
                                   self->enroll_stage,
                                   NULL,
                                   fpi_device_retry_new (FP_DEVICE_RETRY_CENTER_FINGER));
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_CAPTURE);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_ENROLL_CAPTURE);
       return;
     }
   else
@@ -746,7 +746,7 @@ fp_enroll_update_cb (FpiDeviceGoodixMoc  *self,
   /* if enroll complete, no need to wait finger up */
   if (self->enroll_stage >= self->max_enroll_stage)
     {
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_CHECK_DUPLICATE);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_ENROLL_CHECK_DUPLICATE);
       return;
     }
 
@@ -812,7 +812,7 @@ fp_finger_mode_cb (FpiDeviceGoodixMoc  *self,
   /* if reach max timeout(5sec) finger not up, switch to finger up again */
   if (resp->finger_status.status == GX_ERROR_WAIT_FINGER_UP_TIMEOUT)
     {
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_WAIT_FINGER_UP);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_ENROLL_WAIT_FINGER_UP);
       return;
     }
   else if (resp->finger_status.status != GX_SUCCESS)
@@ -827,7 +827,7 @@ fp_finger_mode_cb (FpiDeviceGoodixMoc  *self,
                                            FP_FINGER_STATUS_PRESENT);
   if (self->enroll_stage < self->max_enroll_stage)
     {
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_CAPTURE);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_ENROLL_CAPTURE);
       return;
     }
   fpi_ssm_next_state (self->task_ssm);
@@ -853,7 +853,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_ENROLL_PWR_BTN_SHIELD_ON:
+    case GOODIX_ENROLL_PWR_BTN_SHIELD_ON:
       {
         goodix_sensor_cmd (self, MOC_CMD0_PWR_BTN_SHIELD, MOC_CMD1_PWR_BTN_SHIELD_ON,
                            false,
@@ -863,7 +863,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_ENUM:
+    case GOODIX_ENROLL_ENUM:
       {
         goodix_sensor_cmd (self, MOC_CMD0_GETFINGERLIST, MOC_CMD1_DEFAULT,
                            false,
@@ -873,7 +873,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CREATE:
+    case GOODIX_ENROLL_CREATE:
       {
         goodix_sensor_cmd (self, MOC_CMD0_ENROLL_INIT, MOC_CMD1_DEFAULT,
                            false,
@@ -883,7 +883,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CAPTURE:
+    case GOODIX_ENROLL_CAPTURE:
       fpi_device_report_finger_status_changes (device,
                                                FP_FINGER_STATUS_NEEDED,
                                                FP_FINGER_STATUS_NONE);
@@ -894,7 +894,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_enroll_capture_cb);
       break;
 
-    case FP_ENROLL_UPDATE:
+    case GOODIX_ENROLL_UPDATE:
       dummy[0] = 1;
       dummy[1] = self->sensorcfg->config[2];
       dummy[2] = self->sensorcfg->config[3];
@@ -905,7 +905,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_enroll_update_cb);
       break;
 
-    case FP_ENROLL_WAIT_FINGER_UP:
+    case GOODIX_ENROLL_WAIT_FINGER_UP:
       dummy[0] = 0;
       goodix_sensor_cmd (self, MOC_CMD0_FINGER_MODE, MOC_CMD1_SET_FINGER_UP,
                          true,
@@ -914,7 +914,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_finger_mode_cb);
       break;
 
-    case FP_ENROLL_CHECK_DUPLICATE:
+    case GOODIX_ENROLL_CHECK_DUPLICATE:
       goodix_sensor_cmd (self, MOC_CMD0_CHECK4DUPLICATE, MOC_CMD1_DEFAULT,
                          false,
                          (const guint8 *) &dummy,
@@ -922,7 +922,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_enroll_check_duplicate_cb);
       break;
 
-    case FP_ENROLL_COMMIT:
+    case GOODIX_ENROLL_COMMIT:
       {
         fpi_device_get_enroll_data (device, &print);
         user_id = fpi_print_generate_user_id (print);
@@ -975,7 +975,7 @@ fp_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_PWR_BTN_SHIELD_OFF:
+    case GOODIX_ENROLL_PWR_BTN_SHIELD_OFF:
       {
         goodix_sensor_cmd (self, MOC_CMD0_PWR_BTN_SHIELD, MOC_CMD1_PWR_BTN_SHIELD_OFF,
                            false,
@@ -1066,7 +1066,7 @@ fp_init_cb_reset_or_complete (FpiDeviceGoodixMoc  *self,
     {
       fp_warn ("Template storage appears to have been corrupted! Error was: %s", error->message);
       fp_warn ("A known reason for this to happen is a firmware bug triggered by another storage area being initialized.");
-      fpi_ssm_jump_to_state (self->task_ssm, FP_INIT_RESET_DEVICE);
+      fpi_ssm_jump_to_state (self->task_ssm, GOODIX_INIT_RESET_DEVICE);
     }
   else
     {
@@ -1107,7 +1107,7 @@ fp_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_INIT_VERSION:
+    case GOODIX_INIT_VERSION:
       goodix_sensor_cmd (self, MOC_CMD0_GET_VERSION, MOC_CMD1_DEFAULT,
                          false,
                          &dummy,
@@ -1115,7 +1115,7 @@ fp_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_init_version_cb);
       break;
 
-    case FP_INIT_CONFIG:
+    case GOODIX_INIT_CONFIG:
       goodix_sensor_cmd (self, MOC_CMD0_UPDATE_CONFIG, MOC_CMD1_WRITE_CFG_TO_FLASH,
                          false,
                          (guint8 *) self->sensorcfg,
@@ -1123,7 +1123,7 @@ fp_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_init_config_cb);
       break;
 
-    case FP_INIT_TEMPLATE_LIST:
+    case GOODIX_INIT_TEMPLATE_LIST:
       /* List prints to check whether the template DB was corrupted.
        * As of 2022-06-13 there is a known firmware issue that can cause the
        * stored templates for Linux to be corrupted when the Windows storage
@@ -1138,7 +1138,7 @@ fp_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
                          fp_init_cb_reset_or_complete);
       break;
 
-    case FP_INIT_RESET_DEVICE:
+    case GOODIX_INIT_RESET_DEVICE:
       fp_warn ("Resetting device storage, you will need to enroll all prints again!");
       goodix_sensor_cmd (self, MOC_CMD0_DELETETEMPLATE, MOC_CMD1_DELETE_ALL,
                          FALSE,
@@ -1452,7 +1452,7 @@ gx_fp_init (FpDevice *device)
     }
 
   self->task_ssm = fpi_ssm_new (device, fp_init_sm_run_state,
-                                FP_INIT_NUM_STATES);
+                                GOODIX_INIT_NUM_STATES);
 
   fpi_ssm_start (self->task_ssm, fp_init_ssm_done);
 
@@ -1518,8 +1518,8 @@ gx_fp_verify_identify (FpDevice *device)
   FpiDeviceGoodixMoc *self = FPI_DEVICE_GOODIXMOC (device);
 
   self->task_ssm = fpi_ssm_new_full (device, fp_verify_sm_run_state,
-                                     FP_VERIFY_NUM_STATES,
-                                     FP_VERIFY_PWR_BTN_SHIELD_OFF,
+                                     GOODIX_VERIFY_NUM_STATES,
+                                     GOODIX_VERIFY_PWR_BTN_SHIELD_OFF,
                                      "verify");
 
   fpi_ssm_start (self->task_ssm, fp_verify_ssm_done);
@@ -1535,8 +1535,8 @@ gx_fp_enroll (FpDevice *device)
   self->enroll_stage = 0;
 
   self->task_ssm = fpi_ssm_new_full (device, fp_enroll_sm_run_state,
-                                     FP_ENROLL_NUM_STATES,
-                                     FP_ENROLL_PWR_BTN_SHIELD_OFF,
+                                     GOODIX_ENROLL_NUM_STATES,
+                                     GOODIX_ENROLL_PWR_BTN_SHIELD_OFF,
                                      "enroll");
 
   fpi_ssm_start (self->task_ssm, fp_enroll_ssm_done);

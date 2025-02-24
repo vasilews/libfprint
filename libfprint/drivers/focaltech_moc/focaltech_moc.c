@@ -235,10 +235,10 @@ fp_cmd_receive_cb (FpiUsbTransfer *transfer,
 }
 
 typedef enum {
-  FP_CMD_SEND = 0,
-  FP_CMD_GET,
-  FP_CMD_NUM_STATES,
-} FpCmdState;
+  FOCALTECH_CMD_SEND = 0,
+  FOCALTECH_CMD_GET,
+  FOCALTECH_CMD_NUM_STATES,
+} FocaltechCmdState;
 
 static void
 fp_cmd_run_state (FpiSsm   *ssm,
@@ -249,7 +249,7 @@ fp_cmd_run_state (FpiSsm   *ssm,
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_CMD_SEND:
+    case FOCALTECH_CMD_SEND:
       if (self->cmd_transfer)
         {
           self->cmd_transfer->ssm = ssm;
@@ -266,7 +266,7 @@ fp_cmd_run_state (FpiSsm   *ssm,
 
       break;
 
-    case FP_CMD_GET:
+    case FOCALTECH_CMD_GET:
       if (self->cmd_len_in == 0)
         {
           CommandData *data = fpi_ssm_get_data (ssm);
@@ -334,7 +334,7 @@ focaltech_moc_get_cmd (FpDevice *device, guint8 *buffer_out,
 
   self->cmd_ssm = fpi_ssm_new (FP_DEVICE (self),
                                fp_cmd_run_state,
-                               FP_CMD_NUM_STATES);
+                               FOCALTECH_CMD_NUM_STATES);
 
   fpi_ssm_set_data (self->cmd_ssm, data, (GDestroyNotify) fp_cmd_ssm_done_data_free);
 

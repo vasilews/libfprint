@@ -86,7 +86,7 @@ fpc_suspend_resume_cb (FpiUsbTransfer *transfer,
 
   fp_dbg ("%s current ssm state: %d", G_STRFUNC, ssm_state);
 
-  if (ssm_state == FP_CMD_SUSPENDED)
+  if (ssm_state == FPC_CMD_SUSPENDED)
     {
       if (error)
         fpi_ssm_mark_failed (transfer->ssm, error);
@@ -94,12 +94,12 @@ fpc_suspend_resume_cb (FpiUsbTransfer *transfer,
       fpi_device_suspend_complete (device, error);
       /* The resume handler continues to the next state! */
     }
-  else if (ssm_state == FP_CMD_RESUME)
+  else if (ssm_state == FPC_CMD_RESUME)
     {
       if (error)
         fpi_ssm_mark_failed (transfer->ssm, error);
       else
-        fpi_ssm_jump_to_state (transfer->ssm, FP_CMD_GET_DATA);
+        fpi_ssm_jump_to_state (transfer->ssm, FPC_CMD_GET_DATA);
 
       fpi_device_resume_complete (device, error);
     }
@@ -118,7 +118,7 @@ fpc_cmd_receive_cb (FpiUsbTransfer *transfer,
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED) && (self->cmd_suspended))
     {
       g_error_free (error);
-      fpi_ssm_jump_to_state (transfer->ssm, FP_CMD_SUSPENDED);
+      fpi_ssm_jump_to_state (transfer->ssm, FPC_CMD_SUSPENDED);
       return;
     }
 
@@ -139,7 +139,7 @@ fpc_cmd_receive_cb (FpiUsbTransfer *transfer,
   fp_dbg ("%s current ssm request: %d state: %d", G_STRFUNC, data->request, ssm_state);
 
   /* clean cmd_ssm except capture command for suspend/resume case */
-  if (ssm_state != FP_CMD_SEND || data->request != FPC_CMD_ARM)
+  if (ssm_state != FPC_CMD_SEND || data->request != FPC_CMD_ARM)
     self->cmd_ssm = NULL;
 
   if (data->cmdtype == FPC_CMDTYPE_TO_DEVICE)
@@ -153,13 +153,13 @@ fpc_cmd_receive_cb (FpiUsbTransfer *transfer,
     }
   else if (data->cmdtype == FPC_CMDTYPE_TO_DEVICE_EVTDATA)
     {
-      if (ssm_state == FP_CMD_SEND)
+      if (ssm_state == FPC_CMD_SEND)
         {
           fpi_ssm_next_state (transfer->ssm);
           return;
         }
 
-      if (ssm_state == FP_CMD_GET_DATA)
+      if (ssm_state == FPC_CMD_GET_DATA)
         {
           fpc_cmd_response_t evt_data = {0};
           fp_dbg ("%s recv evt data length: %ld", G_STRFUNC, transfer->actual_length);
@@ -292,11 +292,11 @@ fpc_cmd_run_state (FpiSsm   *ssm,
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_CMD_SEND:
+    case FPC_CMD_SEND:
       fpc_send_ctrl_cmd (dev);
       break;
 
-    case FP_CMD_GET_DATA:
+    case FPC_CMD_GET_DATA:
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_bulk (transfer, EP_IN, EP_IN_MAX_BUF_SIZE);
@@ -307,7 +307,7 @@ fpc_cmd_run_state (FpiSsm   *ssm,
                                fpi_ssm_get_data (ssm));
       break;
 
-    case FP_CMD_SUSPENDED:
+    case FPC_CMD_SUSPENDED:
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_control (transfer,
@@ -323,7 +323,7 @@ fpc_cmd_run_state (FpiSsm   *ssm,
                                fpc_suspend_resume_cb, NULL);
       break;
 
-    case FP_CMD_RESUME:
+    case FPC_CMD_RESUME:
       transfer = fpi_usb_transfer_new (dev);
       transfer->ssm = ssm;
       fpi_usb_transfer_fill_control (transfer,
@@ -368,7 +368,7 @@ fpc_sensor_cmd (FpiDeviceFpcMoc *self,
   g_assert (self->cmd_ssm == NULL);
   self->cmd_ssm = fpi_ssm_new (FP_DEVICE (self),
                                fpc_cmd_run_state,
-                               FP_CMD_NUM_STATES);
+                               FPC_CMD_NUM_STATES);
 
   fpi_ssm_set_data (self->cmd_ssm, data, g_free);
   fpi_ssm_start (self->cmd_ssm, fpc_cmd_ssm_done);
@@ -743,7 +743,7 @@ fpc_enroll_update_cb (FpiDeviceFpcMoc *self,
     case FPC_ENROL_STATUS_COMPLETED:
       self->enroll_stage++;
       fpi_device_enroll_progress (FP_DEVICE (self), self->enroll_stage, NULL, NULL);
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_COMPLETE);
+      fpi_ssm_jump_to_state (self->task_ssm, FPC_ENROLL_COMPLETE);
       return;
 
     case FPC_ENROL_STATUS_IMAGE_TOO_SIMILAR:
@@ -762,7 +762,7 @@ fpc_enroll_update_cb (FpiDeviceFpcMoc *self,
               /* Used for customer enrollment scheme */
               if (self->enroll_stage >= (self->max_enroll_stage - self->max_immobile_stage))
                 {
-                  fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_COMPLETE);
+                  fpi_ssm_jump_to_state (self->task_ssm, FPC_ENROLL_COMPLETE);
                   return;
                 }
               break;
@@ -780,7 +780,7 @@ fpc_enroll_update_cb (FpiDeviceFpcMoc *self,
       /* Used for customer enrollment scheme */
       if (self->enroll_stage >= (self->max_enroll_stage - self->max_immobile_stage))
         {
-          fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_COMPLETE);
+          fpi_ssm_jump_to_state (self->task_ssm, FPC_ENROLL_COMPLETE);
           return;
         }
       break;
@@ -815,7 +815,7 @@ fpc_enroll_update_cb (FpiDeviceFpcMoc *self,
     }
   else
     {
-      fpi_ssm_jump_to_state (self->task_ssm, FP_ENROLL_CAPTURE);
+      fpi_ssm_jump_to_state (self->task_ssm, FPC_ENROLL_CAPTURE);
     }
 }
 
@@ -943,7 +943,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_ENROLL_ENUM:
+    case FPC_ENROLL_ENUM:
       {
         FPC_FID_DATA pquery_data = {0};
         gsize query_data_len = 0;
@@ -968,7 +968,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CREATE:
+    case FPC_ENROLL_CREATE:
       {
         recv_data_len = sizeof (FPC_BEGIN_ENROL);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -983,7 +983,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CAPTURE:
+    case FPC_ENROLL_CAPTURE:
       {
         guint32 capture_id = FPC_CAPTUREID_RESERVED;
         fpi_device_report_finger_status_changes (device,
@@ -1001,7 +1001,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_GET_IMG:
+    case FPC_ENROLL_GET_IMG:
       {
         cmd_data.cmdtype = FPC_CMDTYPE_TO_DEVICE_EVTDATA;
         cmd_data.request = FPC_CMD_GET_IMG;
@@ -1015,7 +1015,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_UPDATE:
+    case FPC_ENROLL_UPDATE:
       {
         recv_data_len = sizeof (FPC_ENROL);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1030,7 +1030,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_COMPLETE:
+    case FPC_ENROLL_COMPLETE:
       {
         recv_data_len = sizeof (FPC_END_ENROL);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1045,7 +1045,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CHECK_DUPLICATE:
+    case FPC_ENROLL_CHECK_DUPLICATE:
       {
         recv_data_len = sizeof (FPC_IDENTIFY);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1060,7 +1060,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_BINDID:
+    case FPC_ENROLL_BINDID:
       {
         FPC_FID_DATA data = {0};
         gsize data_len = 0;
@@ -1114,7 +1114,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_COMMIT:
+    case FPC_ENROLL_COMMIT:
       {
         recv_data_len = sizeof (gint32);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1129,7 +1129,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_DICARD:
+    case FPC_ENROLL_DICARD:
       {
         cmd_data.cmdtype = FPC_CMDTYPE_TO_DEVICE;
         cmd_data.request = FPC_CMD_ABORT;
@@ -1142,7 +1142,7 @@ fpc_enroll_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_ENROLL_CLEANUP:
+    case FPC_ENROLL_CLEANUP:
       {
         if (self->do_cleanup == TRUE)
           {
@@ -1287,7 +1287,7 @@ fpc_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_VERIFY_CAPTURE:
+    case FPC_VERIFY_CAPTURE:
       {
         guint32 capture_id = FPC_CAPTUREID_RESERVED;
         fpi_device_report_finger_status_changes (device,
@@ -1305,7 +1305,7 @@ fpc_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_VERIFY_GET_IMG:
+    case FPC_VERIFY_GET_IMG:
       {
         cmd_data.cmdtype = FPC_CMDTYPE_TO_DEVICE_EVTDATA;
         cmd_data.request = FPC_CMD_GET_IMG;
@@ -1319,7 +1319,7 @@ fpc_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_VERIFY_IDENTIFY:
+    case FPC_VERIFY_IDENTIFY:
       {
         gsize recv_data_len = sizeof (FPC_IDENTIFY);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1334,7 +1334,7 @@ fpc_verify_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_VERIFY_CANCEL:
+    case FPC_VERIFY_CANCEL:
       {
         cmd_data.cmdtype = FPC_CMDTYPE_TO_DEVICE;
         cmd_data.request = FPC_CMD_ABORT;
@@ -1404,7 +1404,7 @@ fpc_clear_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_CLEAR_DELETE_DB:
+    case FPC_CLEAR_DELETE_DB:
       {
         if (self->dbid)
           {
@@ -1431,7 +1431,7 @@ fpc_clear_sm_run_state (FpiSsm *ssm, FpDevice *device)
       }
       break;
 
-    case FP_CLEAR_CREATE_DB:
+    case FPC_CLEAR_CREATE_DB:
       {
         if (self->dbid)
           {
@@ -1536,7 +1536,7 @@ fpc_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    case FP_INIT:
+    case FPC_INIT:
       cmd_data.cmdtype = FPC_CMDTYPE_TO_DEVICE_EVTDATA;
       cmd_data.request = FPC_CMD_INIT;
       cmd_data.value = 0x1;
@@ -1548,7 +1548,7 @@ fpc_init_sm_run_state (FpiSsm *ssm, FpDevice *device)
       fpc_sensor_cmd (self, FALSE, &cmd_data);
       break;
 
-    case FP_LOAD_DB:
+    case FPC_INIT_LOAD_DB:
       {
         gsize recv_data_len = sizeof (FPC_LOAD_DB);
         cmd_data.cmdtype = FPC_CMDTYPE_FROM_DEVICE;
@@ -1682,7 +1682,7 @@ fpc_dev_open (FpDevice *device)
     }
 
   self->task_ssm = fpi_ssm_new (device, fpc_init_sm_run_state,
-                                FP_INIT_NUM_STATES);
+                                FPC_INIT_NUM_STATES);
 
   fpi_ssm_start (self->task_ssm, fpc_init_ssm_done);
 }
@@ -1705,8 +1705,8 @@ fpc_dev_verify_identify (FpDevice *device)
 
   fp_dbg ("%s enter -->", G_STRFUNC);
   self->task_ssm = fpi_ssm_new_full (device, fpc_verify_sm_run_state,
-                                     FP_VERIFY_NUM_STATES,
-                                     FP_VERIFY_CANCEL,
+                                     FPC_VERIFY_NUM_STATES,
+                                     FPC_VERIFY_CANCEL,
                                      "verify_identify");
 
   fpi_ssm_start (self->task_ssm, fpc_verify_ssm_done);
@@ -1722,8 +1722,8 @@ fpc_dev_enroll (FpDevice *device)
   self->enroll_stage = 0;
   self->immobile_stage = 0;
   self->task_ssm = fpi_ssm_new_full (device, fpc_enroll_sm_run_state,
-                                     FP_ENROLL_NUM_STATES,
-                                     FP_ENROLL_DICARD,
+                                     FPC_ENROLL_NUM_STATES,
+                                     FPC_ENROLL_DICARD,
                                      "enroll");
 
   fpi_ssm_start (self->task_ssm, fpc_enroll_ssm_done);
@@ -1774,7 +1774,7 @@ fpc_dev_suspend (FpDevice *device)
     }
 
   g_assert (self->cmd_ssm);
-  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == FP_CMD_GET_DATA);
+  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == FPC_CMD_GET_DATA);
   self->cmd_suspended = TRUE;
   g_cancellable_cancel (self->interrupt_cancellable);
 }
@@ -1796,10 +1796,10 @@ fpc_dev_resume (FpDevice *device)
 
   g_assert (self->cmd_ssm);
   g_assert (self->cmd_suspended);
-  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == FP_CMD_SUSPENDED);
+  g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == FPC_CMD_SUSPENDED);
   self->cmd_suspended = FALSE;
   g_set_object (&self->interrupt_cancellable, g_cancellable_new ());
-  fpi_ssm_jump_to_state (self->cmd_ssm, FP_CMD_RESUME);
+  fpi_ssm_jump_to_state (self->cmd_ssm, FPC_CMD_RESUME);
 }
 
 static void
@@ -1863,8 +1863,8 @@ fpc_dev_clear_storage (FpDevice *device)
 
   fp_dbg ("%s enter -->", G_STRFUNC);
   self->task_ssm = fpi_ssm_new_full (device, fpc_clear_sm_run_state,
-                                     FP_CLEAR_NUM_STATES,
-                                     FP_CLEAR_NUM_STATES,
+                                     FPC_CLEAR_NUM_STATES,
+                                     FPC_CLEAR_NUM_STATES,
                                      "Clear storage");
 
   fpi_ssm_start (self->task_ssm, fpc_clear_ssm_done);
