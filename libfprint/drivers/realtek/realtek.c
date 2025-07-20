@@ -29,6 +29,7 @@ G_DEFINE_TYPE (FpiDeviceRealtek, fpi_device_realtek, FP_TYPE_DEVICE)
 static const FpIdEntry id_table[] = {
   { .vid = 0x0bda,  .pid = 0x5813,  },
   { .vid = 0x0bda,  .pid = 0x5816,  },
+  { .vid = 0x2541,  .pid = 0xfa03,  },
   { .vid = 0,  .pid = 0,  .driver_data = 0 },   /* terminating entry */
 };
 

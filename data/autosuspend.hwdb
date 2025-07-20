@@ -243,6 +243,7 @@ usb:v298Dp1010*
 # Supported by libfprint driver realtek
 usb:v0BDAp5813*
 usb:v0BDAp5816*
+usb:v2541pFA03*
  ID_AUTOSUSPEND=1
  ID_PERSIST=0
 
