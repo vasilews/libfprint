@@ -1483,9 +1483,7 @@ gx_fp_exit_cb (FpiDeviceGoodixMoc  *self,
                gxfp_cmd_response_t *resp,
                GError              *error)
 {
-
-
-  if (resp->result >= GX_FAILED)
+  if (resp && resp->result >= GX_FAILED)
     fp_dbg ("Setting power button shield failed, result: 0x%x", resp->result);
   self->is_power_button_shield_on = false;
   gx_fp_release_interface (self, error);
