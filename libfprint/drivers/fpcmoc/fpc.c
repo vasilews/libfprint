@@ -65,6 +65,7 @@ typedef struct
 static const FpIdEntry id_table[] = {
   { .vid = 0x10A5,  .pid = 0xFFE0,  },
   { .vid = 0x10A5,  .pid = 0xA305,  },
+  { .vid = 0x10A5,  .pid = 0xA306,  },
   { .vid = 0x10A5,  .pid = 0xDA04,  },
   { .vid = 0x10A5,  .pid = 0xD805,  },
   { .vid = 0x10A5,  .pid = 0xD205,  },
@@ -1638,6 +1639,7 @@ fpc_dev_probe (FpDevice *device)
     {
     case 0xFFE0:
     case 0xA305:
+    case 0xA306:
     case 0xD805:
     case 0xDA04:
     case 0xD205:
