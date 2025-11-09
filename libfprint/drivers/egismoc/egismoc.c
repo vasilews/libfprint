@@ -54,6 +54,7 @@ static const FpIdEntry egismoc_id_table[] = {
   { .vid = 0x1c7a, .pid = 0x0583, .driver_data = EGISMOC_DRIVER_CHECK_PREFIX_TYPE1 },
   { .vid = 0x1c7a, .pid = 0x0586, .driver_data = EGISMOC_DRIVER_CHECK_PREFIX_TYPE1 | EGISMOC_DRIVER_MAX_ENROLL_STAGES_20 },
   { .vid = 0x1c7a, .pid = 0x0587, .driver_data = EGISMOC_DRIVER_CHECK_PREFIX_TYPE1 | EGISMOC_DRIVER_MAX_ENROLL_STAGES_20 },
+  { .vid = 0x1c7a, .pid = 0x0588, .driver_data = EGISMOC_DRIVER_CHECK_PREFIX_TYPE1 | EGISMOC_DRIVER_MAX_ENROLL_STAGES_20 },
   { .vid = 0x1c7a, .pid = 0x05a1, .driver_data = EGISMOC_DRIVER_CHECK_PREFIX_TYPE2 },
   { .vid = 0,      .pid = 0,      .driver_data = 0 }
 };
