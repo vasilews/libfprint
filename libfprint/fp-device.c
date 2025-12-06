@@ -483,6 +483,9 @@ fp_device_class_init (FpDeviceClass *klass)
                          NULL,
                          G_PARAM_STATIC_STRINGS | G_PARAM_READABLE);
 
+  /**
+   * FpDevice:open: (getter is_open):
+   */
   properties[PROP_OPEN] =
     g_param_spec_boolean ("open",
                           "Opened",
