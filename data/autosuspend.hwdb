@@ -177,6 +177,7 @@ usb:v1C7Ap0603*
 # Supported by libfprint driver focaltech_moc
 usb:v2808p9E48*
 usb:v2808pD979*
+usb:v2808pA27A*
 usb:v2808pA959*
 usb:v2808pA99A*
 usb:v2808pA57A*
