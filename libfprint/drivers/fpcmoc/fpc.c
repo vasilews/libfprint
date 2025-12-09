@@ -354,15 +354,16 @@ fpc_sensor_cmd (FpiDeviceFpcMoc *self,
 
   data = g_memdup2 (cmd_data, sizeof (CommandData));
 
+  g_clear_object (&self->interrupt_cancellable);
+
   if (wait_data_delay)
     {
       self->cmd_data_timeout = 0;
-      g_set_object (&self->interrupt_cancellable, g_cancellable_new ());
+      self->interrupt_cancellable = g_cancellable_new ();
     }
   else
     {
       self->cmd_data_timeout = DATA_TIMEOUT;
-      g_clear_object (&self->interrupt_cancellable);
     }
 
   g_assert (self->cmd_ssm == NULL);
@@ -1694,6 +1695,7 @@ fpc_dev_close (FpDevice *device)
 
   fp_dbg ("%s enter -->", G_STRFUNC);
   g_clear_pointer (&self->dbid, g_free);
+  g_cancellable_cancel (self->interrupt_cancellable);
   g_clear_object (&self->interrupt_cancellable);
   fpc_dev_release_interface (self, NULL);
 }
@@ -1798,7 +1800,9 @@ fpc_dev_resume (FpDevice *device)
   g_assert (self->cmd_suspended);
   g_assert (fpi_ssm_get_cur_state (self->cmd_ssm) == FPC_CMD_SUSPENDED);
   self->cmd_suspended = FALSE;
-  g_set_object (&self->interrupt_cancellable, g_cancellable_new ());
+
+  g_clear_object (&self->interrupt_cancellable);
+  self->interrupt_cancellable = g_cancellable_new ();
   fpi_ssm_jump_to_state (self->cmd_ssm, FPC_CMD_RESUME);
 }
 
