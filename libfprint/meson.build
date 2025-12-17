@@ -24,6 +24,7 @@ libfprint_private_sources = [
     'fpi-print.c',
     'fpi-ssm.c',
     'fpi-usb-transfer.c',
+    'fpi-custom-match.cpp',
 ] + spi_sources
 
 libfprint_public_headers = [
@@ -49,6 +50,7 @@ libfprint_private_headers = [
     'fpi-print.h',
     'fpi-usb-transfer.h',
     'fpi-ssm.h',
+    'fpi-custom-match.h',
 ] + spi_headers
 
 nbis_sources = [
@@ -153,6 +155,8 @@ driver_sources = {
         [ 'drivers/realtek/realtek.c' ],
     'focaltech_moc' :
         [ 'drivers/focaltech_moc/focaltech_moc.c' ],
+    'fpc_a921' :
+        [ 'drivers/fpc_a921.c' ],
 }
 
 helper_sources = {
@@ -163,6 +167,8 @@ helper_sources = {
     'aes3k' :
         [ 'drivers/aes3k.c' ],
     'openssl' :
+        [ ],
+    'opencv' :
         [ ],
     'udev' :
         [ ],

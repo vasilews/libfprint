@@ -96,6 +96,7 @@ gobject_dep = dependency('gobject-2.0', version: '>=' + glib_min_version)
 gusb_dep = dependency('gusb', version: '>= 0.2.0')
 mathlib_dep = cc.find_library('m', required: false)
 
+
 # The following dependencies are only used for tests
 sh = find_program('sh', required: true)
 cairo_dep = dependency('cairo', required: false)
@@ -144,6 +145,7 @@ default_drivers = [
     'fpcmoc',
     'realtek',
     'focaltech_moc',
+    'fpc_a921',
 ]
 
 spi_drivers = [
@@ -211,6 +213,7 @@ driver_helper_mapping = {
     'aes4000' : [ 'aeslib', 'aes3k' ],
     'uru4000' : [ 'openssl' ],
     'elanspi' : [ 'udev' ],
+    'fpc_a921' : [ 'openssl', 'opencv' ],
     'virtual_image'          : [ 'virtual' ],
     'virtual_device'         : [ 'virtual' ],
     'virtual_device_storage' : [ 'virtual' ],
@@ -273,6 +276,13 @@ foreach i : driver_helpers
         endif
 
         optional_deps += openssl_dep
+    elif i == 'opencv'
+        opencv_dep = dependency('opencv4', required: false)
+        if not opencv_dep.found()
+            error('OpenCV is required for @0@ and possibly others'.format(driver))
+        endif
+
+        optional_deps += opencv_dep
     elif i == 'udev'
         install_udev_rules = true
 

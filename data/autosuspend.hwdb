@@ -186,6 +186,11 @@ usb:v2808p1579*
  ID_AUTOSUSPEND=1
  ID_PERSIST=0
 
+# Supported by libfprint driver fpc_a921
+usb:v10A5pA921*
+ ID_AUTOSUSPEND=1
+ ID_PERSIST=0
+
 # Supported by libfprint driver fpcmoc
 usb:v10A5pFFE0*
 usb:v10A5pA305*
