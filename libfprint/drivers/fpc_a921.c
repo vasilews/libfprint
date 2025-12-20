@@ -84,17 +84,6 @@
 /* 0xAB - 0xF0 - не используется */
 #define  CMD_EC_STATE                  0xF1  /* Состояние Embedded Controller */
 
-
-//#define CMD_INIT            1
-//#define CMD_ARM             2
-//#define CMD_TLS_INIT        5
-//#define CMD_TLS_DATA        6
-//#define CMD_INDICATE_STATE  8
-//#define CMD_GET_IMG         9
-//#define CMD_CLR_IMG         17
-//#define CMD_SET_TLS_KEY     13
-//#define CMD_GET_STATE       80
-
 /* Timeouts (ms) */
 #define USB_TIMEOUT_MS      1000
 #define FINGER_TIMEOUT_MS   15000
@@ -577,6 +566,7 @@ fpc_recv_bulk(FpiDeviceFpcA921 *self, gsize len, guint timeout_ms,
               FpiUsbTransferCallback callback)
 {
     FpiUsbTransfer *transfer;
+    GCancellable *cancellable = NULL;
 
     fpc_dbg(self, "BULK IN: len=%zu timeout=%u", len, timeout_ms);
 
@@ -585,7 +575,8 @@ fpc_recv_bulk(FpiDeviceFpcA921 *self, gsize len, guint timeout_ms,
 
     fpi_usb_transfer_fill_bulk(transfer, EP_IN, len);
 
-    fpi_usb_transfer_submit(transfer, timeout_ms, NULL, callback, NULL);
+    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+    fpi_usb_transfer_submit(transfer, timeout_ms, cancellable, callback, NULL);
 }
 
 /* ============== USB Callbacks ============== */
@@ -603,6 +594,12 @@ fpc_ctrl_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
     }
 
     fpc_dbg(self, "Control OUT OK");
+
+    if (self->cancelling)
+    {
+      return;
+    }
+
     fpc_ssm_next_state(self);
 }
 
@@ -741,10 +738,9 @@ fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
     if (self->cancelling)
     {
         if (error) g_error_free(error);
-        
+
         self->cancelling = FALSE;
         fpc_set_state(self, FPC_STATE_NONE);
-        
         GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
                                            "Operation cancelled");
         fpc_complete_with_error(self, cancel_error);
@@ -1534,6 +1530,13 @@ fpc_dev_open(FpDevice *device)
         (GDestroyNotify)fpi_custom_features_free
     );
 
+    //  /* Reset USB port */
+    //if (!g_usb_device_reset(usb_dev, &error))
+    //{
+    //    fpc_warn(self, "USB reset failed: %s", error->message);
+    //    g_error_free(error);
+    //}
+
     /* Start initialization and TLS handshake */
     self->current_op = FPC_OP_OPEN;
     fpc_set_state(self, FPC_STATE_INIT_INDICATE);
@@ -1664,6 +1667,9 @@ fpc_dev_cancel(FpDevice *device)
     fpc_dbg(self, "Cancelling operation");
 
     self->cancelling = TRUE;
+
+    fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_ctrl_cmd_cb);
+
 }
 
 /* ============== GObject Implementation ============== */
@@ -1772,4 +1778,5 @@ fpi_device_fpc_a921_class_init(FpiDeviceFpcA921Class *klass)
     dev_class->capture = fpc_dev_capture;
     dev_class->cancel = fpc_dev_cancel;
 }
+
 
