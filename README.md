@@ -137,6 +137,8 @@ sudo pacman -Syu \
     gobject-introspection \
     glib2-devel \
     opencv \
+    hdf5 \
+    vtk \
     fprintd
 ```
 
