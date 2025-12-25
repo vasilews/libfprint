@@ -20,7 +20,6 @@
 #include <openssl/rand.h>
 #include <openssl/bio.h>
 
-#include <math.h>
 #include <string.h>
 
 /* ============== Constants ============== */
@@ -87,7 +86,7 @@
 /* Timeouts (ms) */
 #define USB_TIMEOUT_MS      1000
 #define FINGER_TIMEOUT_MS   15000
-#define IMAGE_TIMEOUT_MS    5000
+#define IMAGE_TIMEOUT_MS    2000
 #define TLS_TIMEOUT_MS      2000
 
 /* Buffer sizes */
@@ -168,8 +167,6 @@ typedef enum {
     FPC_STATE_CAPTURE_RECV_IMAGE,
     FPC_STATE_CAPTURE_CLEAR_IMAGE,
     FPC_STATE_CAPTURE_PROCESS,
-
-    FPC_STATE_COUNT
 } FpcState;
 
 /* Current operation */
@@ -517,6 +514,7 @@ fpc_send_ctrl_cmd(FpiDeviceFpcA921 *self, guint8 request,
                   FpiUsbTransferCallback callback)
 {
     FpiUsbTransfer *transfer;
+    GCancellable *cancellable = NULL;
 
     fpc_dbg(self, "CTRL OUT: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
             request, value, index, len);
@@ -536,7 +534,8 @@ fpc_send_ctrl_cmd(FpiDeviceFpcA921 *self, guint8 request,
     if (data != NULL && len > 0)
         memcpy(transfer->buffer, data, len);
 
-    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, NULL, callback, NULL);
+    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
 }
 
 static void
@@ -545,6 +544,7 @@ fpc_recv_ctrl(FpiDeviceFpcA921 *self, guint8 request,
               FpiUsbTransferCallback callback)
 {
     FpiUsbTransfer *transfer;
+    GCancellable *cancellable = NULL;
 
     fpc_dbg(self, "CTRL IN: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
             request, value, index, len);
@@ -558,7 +558,8 @@ fpc_recv_ctrl(FpiDeviceFpcA921 *self, guint8 request,
                                   G_USB_DEVICE_RECIPIENT_DEVICE,
                                   request, value, index, len);
 
-    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, NULL, callback, NULL);
+    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
 }
 
 static void
@@ -595,9 +596,40 @@ fpc_ctrl_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
 
     fpc_dbg(self, "Control OUT OK");
 
-    if (self->cancelling)
+
+    fpc_ssm_next_state(self);
+}
+
+
+static void
+fpc_abort_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
+                gpointer user_data, GError *error)
+{
+    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+
+    if (error != NULL)
     {
-      return;
+        fpc_dbg(self, "ABORTED ERROR");
+        fpc_complete_with_error(self, error);
+        return;
+    }
+
+    fpc_dbg(self, "ABORTED");
+
+    fpc_set_state(self, FPC_STATE_NONE);
+    fpc_ssm_run_state(self);
+}
+
+static void
+fpc_clr_img_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
+                      gpointer user_data, GError *error)
+{
+    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+
+    if (error != NULL)
+    {
+        fpc_complete_with_error(self, error);
+        return;
     }
 
     fpc_ssm_next_state(self);
@@ -633,7 +665,7 @@ fpc_init_get_state_cb(FpiUsbTransfer *transfer, FpDevice *device,
                  vid, pid);
     }
 
-    fpc_ssm_next_state(self);
+    fpc_send_ctrl_cmd(self, CMD_CLR_IMG, 0, 0, NULL, 0, fpc_clr_img_cmd_cb);
 }
 
 static void
@@ -740,10 +772,11 @@ fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
         if (error) g_error_free(error);
 
         self->cancelling = FALSE;
-        fpc_set_state(self, FPC_STATE_NONE);
         GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
                                            "Operation cancelled");
+
         fpc_complete_with_error(self, cancel_error);
+        //fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_abort_cmd_cb);
         return;
     }
 
@@ -811,6 +844,20 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
     FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
     const gsize expected_size = IMAGE_HEADER_SIZE + 
                                 (gsize)IMAGE_RAW_WIDTH * IMAGE_RAW_HEIGHT;
+
+
+    if (self->cancelling)
+    {
+        if (error) g_error_free(error);
+
+        self->cancelling = FALSE;
+        GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                                           "Operation cancelled");
+
+        fpc_complete_with_error(self, cancel_error);
+        //fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_abort_cmd_cb);
+        return;
+    }
 
     if (error != NULL)
     {
@@ -1157,7 +1204,6 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
             break;
 
         case FPC_STATE_NONE:
-        case FPC_STATE_COUNT:
             break;
     }
 }
@@ -1531,11 +1577,11 @@ fpc_dev_open(FpDevice *device)
     );
 
     //  /* Reset USB port */
-    //if (!g_usb_device_reset(usb_dev, &error))
-    //{
-    //    fpc_warn(self, "USB reset failed: %s", error->message);
-    //    g_error_free(error);
-    //}
+    if (!g_usb_device_reset(usb_dev, &error))
+    {
+        fpc_warn(self, "USB reset failed: %s", error->message);
+        g_error_free(error);
+    }
 
     /* Start initialization and TLS handshake */
     self->current_op = FPC_OP_OPEN;
@@ -1668,7 +1714,6 @@ fpc_dev_cancel(FpDevice *device)
 
     self->cancelling = TRUE;
 
-    fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_ctrl_cmd_cb);
 
 }
 
