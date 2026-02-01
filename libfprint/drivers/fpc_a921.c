@@ -113,76 +113,76 @@
 
 /* PSK data */
 static const guint8 FPC_PSK[32] = {
-    0x9D, 0xB8, 0x3C, 0xC9, 0xFA, 0x51, 0xFE, 0xFE,
-    0x25, 0x29, 0x2D, 0x16, 0x82, 0x61, 0xEC, 0x17,
-    0x39, 0xB2, 0x92, 0x64, 0xFD, 0x3C, 0x6E, 0xE0,
-    0x74, 0xF5, 0x36, 0xBD, 0x1C, 0xC6, 0x18, 0x55
+  0x9D, 0xB8, 0x3C, 0xC9, 0xFA, 0x51, 0xFE, 0xFE,
+  0x25, 0x29, 0x2D, 0x16, 0x82, 0x61, 0xEC, 0x17,
+  0x39, 0xB2, 0x92, 0x64, 0xFD, 0x3C, 0x6E, 0xE0,
+  0x74, 0xF5, 0x36, 0xBD, 0x1C, 0xC6, 0x18, 0x55
 };
 
 static const gchar PSK_IDENTITY[] = "Disum PSK";
 
 static const guint8 TLS_KEY_DATA[] = {
-    0xed, 0x0d, 0xec, 0x0d, 0x1c, 0x00, 0x00, 0x00,
-    0x20, 0x00, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00,
-    0x0b, 0x00, 0x00, 0x00, 0x57, 0x00, 0x00, 0x00,
-    0x20, 0x00, 0x00, 0x00,
-    0xf0, 0x7b, 0x7f, 0xe5, 0x2e, 0x29, 0xa1, 0x04,
-    0x98, 0x95, 0x97, 0x2b, 0x18, 0xcc, 0xba, 0xc2,
-    0x5b, 0x02, 0xd2, 0x98, 0xfd, 0x3f, 0xe5, 0x67,
-    0x2a, 0x26, 0x33, 0xe6, 0xae, 0xee, 0x4c, 0x21,
-    0x73, 0x00, 0x6f, 0x00, 0x6e, 0x00, 0x61, 0x00,
-    0x74, 0x00, 0x69, 0x00, 0x6f, 0x00, 0x6e, 0x00,
-    0x46, 0x50, 0x43, 0x5f, 0x4b, 0x45, 0x59, 0x5f,
-    0x41, 0x41, 0x44, 0x38, 0x35, 0x1c, 0x1c, 0xaf,
-    0xc5, 0x5a, 0xa5, 0xd0, 0x2f, 0x02, 0x5b, 0x3d,
-    0x2d, 0x13, 0xe7, 0x33, 0x72, 0x58, 0x1d, 0x44,
-    0x74, 0x0a, 0x54, 0x95, 0xc9, 0x8a, 0x30, 0xdf,
-    0x44, 0x6f, 0x0e
+  0xed, 0x0d, 0xec, 0x0d, 0x1c, 0x00, 0x00, 0x00,
+  0x20, 0x00, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00,
+  0x0b, 0x00, 0x00, 0x00, 0x57, 0x00, 0x00, 0x00,
+  0x20, 0x00, 0x00, 0x00,
+  0xf0, 0x7b, 0x7f, 0xe5, 0x2e, 0x29, 0xa1, 0x04,
+  0x98, 0x95, 0x97, 0x2b, 0x18, 0xcc, 0xba, 0xc2,
+  0x5b, 0x02, 0xd2, 0x98, 0xfd, 0x3f, 0xe5, 0x67,
+  0x2a, 0x26, 0x33, 0xe6, 0xae, 0xee, 0x4c, 0x21,
+  0x73, 0x00, 0x6f, 0x00, 0x6e, 0x00, 0x61, 0x00,
+  0x74, 0x00, 0x69, 0x00, 0x6f, 0x00, 0x6e, 0x00,
+  0x46, 0x50, 0x43, 0x5f, 0x4b, 0x45, 0x59, 0x5f,
+  0x41, 0x41, 0x44, 0x38, 0x35, 0x1c, 0x1c, 0xaf,
+  0xc5, 0x5a, 0xa5, 0xd0, 0x2f, 0x02, 0x5b, 0x3d,
+  0x2d, 0x13, 0xe7, 0x33, 0x72, 0x58, 0x1d, 0x44,
+  0x74, 0x0a, 0x54, 0x95, 0xc9, 0x8a, 0x30, 0xdf,
+  0x44, 0x6f, 0x0e
 };
 
 /* ============== State Machine ============== */
 
 typedef enum {
-    FPC_STATE_NONE = 0,
+  FPC_STATE_NONE = 0,
 
-    /* Device initialization */
-    FPC_STATE_INIT_INDICATE,
-    FPC_STATE_INIT_GET_STATE,
-    FPC_STATE_INIT_SEND_SESSION,
-    FPC_STATE_INIT_RECV_SESSION,
-    FPC_STATE_INIT_SET_TLS_KEY,
+  /* Device initialization */
+  FPC_STATE_INIT_INDICATE,
+  FPC_STATE_INIT_GET_STATE,
+  FPC_STATE_INIT_SEND_SESSION,
+  FPC_STATE_INIT_RECV_SESSION,
+  FPC_STATE_INIT_SET_TLS_KEY,
 
-    /* TLS Handshake */
-    FPC_STATE_TLS_INIT_CMD,
-    FPC_STATE_TLS_HANDSHAKE_START,
-    FPC_STATE_TLS_SEND_DATA,
-    FPC_STATE_TLS_SEND_CHUNK,
-    FPC_STATE_TLS_RECV_DATA,
-    FPC_STATE_TLS_HANDSHAKE_CHECK,
+  /* TLS Handshake */
+  FPC_STATE_TLS_INIT_CMD,
+  FPC_STATE_TLS_HANDSHAKE_START,
+  FPC_STATE_TLS_SEND_DATA,
+  FPC_STATE_TLS_SEND_CHUNK,
+  FPC_STATE_TLS_RECV_DATA,
+  FPC_STATE_TLS_HANDSHAKE_CHECK,
 
-    /* Image capture */
-    FPC_STATE_CAPTURE_ARM,
-    FPC_STATE_CAPTURE_WAIT_FINGER,
-    FPC_STATE_CAPTURE_GET_IMAGE,
-    FPC_STATE_CAPTURE_RECV_IMAGE,
-    FPC_STATE_CAPTURE_CLEAR_IMAGE,
-    FPC_STATE_CAPTURE_PROCESS,
+  /* Image capture */
+  FPC_STATE_CAPTURE_ARM,
+  FPC_STATE_CAPTURE_WAIT_FINGER,
+  FPC_STATE_CAPTURE_GET_IMAGE,
+  FPC_STATE_CAPTURE_RECV_IMAGE,
+  FPC_STATE_CAPTURE_CLEAR_IMAGE,
+  FPC_STATE_CAPTURE_PROCESS,
 } FpcState;
 
 /* Current operation */
 typedef enum {
-    FPC_OP_NONE = 0,
-    FPC_OP_OPEN,
-    FPC_OP_ENROLL,
-    FPC_OP_VERIFY,
-    FPC_OP_IDENTIFY,
-    FPC_OP_CAPTURE,
+  FPC_OP_NONE = 0,
+  FPC_OP_OPEN,
+  FPC_OP_ENROLL,
+  FPC_OP_VERIFY,
+  FPC_OP_IDENTIFY,
+  FPC_OP_CAPTURE,
 } FpcOperation;
 
 static const gchar *
 fpc_state_to_string(FpcState state)
 {
-    switch (state) {
+  switch (state) {
     case FPC_STATE_NONE:               return "NONE";
     case FPC_STATE_INIT_INDICATE:      return "INIT_INDICATE";
     case FPC_STATE_INIT_GET_STATE:     return "INIT_GET_STATE";
@@ -202,13 +202,13 @@ fpc_state_to_string(FpcState state)
     case FPC_STATE_CAPTURE_CLEAR_IMAGE: return "CAPTURE_CLEAR_IMAGE";
     case FPC_STATE_CAPTURE_PROCESS:    return "CAPTURE_PROCESS";
     default:                           return "UNKNOWN";
-    }
+  }
 }
 
 static const gchar *
 fpc_op_to_string(FpcOperation op)
 {
-    switch (op) {
+  switch (op) {
     case FPC_OP_NONE:     return "NONE";
     case FPC_OP_OPEN:     return "OPEN";
     case FPC_OP_ENROLL:   return "ENROLL";
@@ -216,7 +216,7 @@ fpc_op_to_string(FpcOperation op)
     case FPC_OP_IDENTIFY: return "IDENTIFY";
     case FPC_OP_CAPTURE:  return "CAPTURE";
     default:              return "UNKNOWN";
-    }
+  }
 }
 
 /* ============== Device Structure ============== */
@@ -227,42 +227,44 @@ G_DECLARE_FINAL_TYPE(FpiDeviceFpcA921, fpi_device_fpc_a921, FPI,
 
 struct _FpiDeviceFpcA921
 {
-    FpDevice parent;
+  FpDevice parent;
 
-    /* State machine */
-    FpcState      state;
-    FpcOperation  current_op;
-    gboolean      cancelling;
+  /* State machine */
+  FpcState      state;
+  FpcOperation  current_op;
+  gboolean      cancelling;
 
-    /* USB */
-    guint8        session_id[4];
+  /* USB */
+  guint8        session_id[4];
 
-    /* OpenSSL TLS */
-    SSL_CTX      *ssl_ctx;
-    SSL          *ssl;
-    BIO          *rbio;
-    BIO          *wbio;
-    gboolean      tls_ready;
-    gint          handshake_iterations;
+  /* OpenSSL TLS */
+  SSL_CTX      *ssl_ctx;
+  SSL          *ssl;
+  BIO          *rbio;
+  BIO          *wbio;
+  gboolean      tls_ready;
+  gint          handshake_iterations;
 
-    /* TLS send buffer */
-    guint8       *tls_send_buf;
-    gsize         tls_send_len;
-    gsize         tls_send_offset;
+  /* TLS send buffer */
+  guint8       *tls_send_buf;
+  gsize         tls_send_len;
+  gsize         tls_send_offset;
 
-    /* Image buffer */
-    guint8       *image_buffer;
-    gsize         image_buffer_len;
-    gsize         image_buffer_alloc;
-    gint          image_packet_count;
+  /* Image buffer */
+  guint8       *image_buffer;
+  gsize         image_buffer_len;
+  gsize         image_buffer_alloc;
+  gint          image_packet_count;
 
-    /* Device info */
-    guint8        version[4];
-    gchar         model[8];
+  FpiUsbTransfer *active_transfer;
 
-    /* Enroll data */
-    GPtrArray    *enroll_samples;
-    gint          enroll_stage;
+  /* Device info */
+  guint8        version[4];
+  gchar         model[8];
+
+  /* Enroll data */
+  GPtrArray    *enroll_samples;
+  gint          enroll_stage;
 };
 
 G_DEFINE_TYPE(FpiDeviceFpcA921, fpi_device_fpc_a921, FP_TYPE_DEVICE)
@@ -281,28 +283,28 @@ static void fpc_dev_capture(FpDevice *device);
 /* ============== Logging Macros ============== */
 
 #define fpc_dbg(_self, fmt, ...) \
-    fp_dbg("[%s:%s] " fmt, \
-           fpc_state_to_string((_self)->state), \
-           fpc_op_to_string((_self)->current_op), \
-           ##__VA_ARGS__)
+fp_dbg("[%s:%s] " fmt, \
+       fpc_state_to_string((_self)->state), \
+       fpc_op_to_string((_self)->current_op), \
+       ##__VA_ARGS__)
 
 #define fpc_info(_self, fmt, ...) \
-    fp_info("[%s:%s] " fmt, \
-            fpc_state_to_string((_self)->state), \
-            fpc_op_to_string((_self)->current_op), \
-            ##__VA_ARGS__)
+fp_info("[%s:%s] " fmt, \
+        fpc_state_to_string((_self)->state), \
+        fpc_op_to_string((_self)->current_op), \
+        ##__VA_ARGS__)
 
 #define fpc_warn(_self, fmt, ...) \
-    fp_warn("[%s:%s] " fmt, \
-            fpc_state_to_string((_self)->state), \
-            fpc_op_to_string((_self)->current_op), \
-            ##__VA_ARGS__)
+fp_warn("[%s:%s] " fmt, \
+        fpc_state_to_string((_self)->state), \
+        fpc_op_to_string((_self)->current_op), \
+        ##__VA_ARGS__)
 
 #define fpc_err(_self, fmt, ...) \
-    fp_err("[%s:%s] " fmt, \
-           fpc_state_to_string((_self)->state), \
-           fpc_op_to_string((_self)->current_op), \
-           ##__VA_ARGS__)
+fp_err("[%s:%s] " fmt, \
+       fpc_state_to_string((_self)->state), \
+       fpc_op_to_string((_self)->current_op), \
+       ##__VA_ARGS__)
 
 /* ============== Utility Functions ============== */
 
@@ -310,28 +312,28 @@ static void
 fpc_log_hex(FpiDeviceFpcA921 *self, const gchar *prefix, 
             const guint8 *data, gsize len)
 {
-    g_autoptr(GString) hex = g_string_new(NULL);
-    gsize max_len = MIN(len, 32);
+  g_autoptr(GString) hex = g_string_new(NULL);
+  gsize max_len = MIN(len, 32);
 
-    for (gsize i = 0; i < max_len; i++)
-        g_string_append_printf(hex, "%02X ", data[i]);
+  for (gsize i = 0; i < max_len; i++)
+    g_string_append_printf(hex, "%02X ", data[i]);
 
-    if (len > max_len)
-        g_string_append_printf(hex, "... (+%zu)", len - max_len);
+  if (len > max_len)
+    g_string_append_printf(hex, "... (+%zu)", len - max_len);
 
-    fpc_dbg(self, "%s[%zu]: %s", prefix, len, hex->str);
+  fpc_dbg(self, "%s[%zu]: %s", prefix, len, hex->str);
 }
 
 static void
 fpc_set_state(FpiDeviceFpcA921 *self, FpcState new_state)
 {
-    if (self->state != new_state)
-    {
-        fp_dbg("State: %s -> %s", 
-               fpc_state_to_string(self->state),
-               fpc_state_to_string(new_state));
-        self->state = new_state;
-    }
+  if (self->state != new_state)
+  {
+    fp_dbg("State: %s -> %s", 
+           fpc_state_to_string(self->state),
+           fpc_state_to_string(new_state));
+    self->state = new_state;
+  }
 }
 
 /* Rotate image 90° CCW: (64x176) -> (176x64) */
@@ -339,15 +341,15 @@ static void
 fpc_rotate_90_ccw(const guint8 *src, guint8 *dst,
                   int raw_width, int raw_height)
 {
-    for (int y = 0; y < raw_height; y++)
+  for (int y = 0; y < raw_height; y++)
+  {
+    for (int x = 0; x < raw_width; x++)
     {
-        for (int x = 0; x < raw_width; x++)
-        {
-            int src_idx = y * raw_width + x;
-            int dst_idx = (raw_width - 1 - x) * raw_height + y;
-            dst[dst_idx] = src[src_idx];
-        }
+      int src_idx = y * raw_width + x;
+      int dst_idx = (raw_width - 1 - x) * raw_height + y;
+      dst[dst_idx] = src[src_idx];
     }
+  }
 }
 
 /* ============== Error Handling ============== */
@@ -355,37 +357,58 @@ fpc_rotate_90_ccw(const guint8 *src, guint8 *dst,
 static void
 fpc_complete_with_error(FpiDeviceFpcA921 *self, GError *error)
 {
-    FpDevice *device = FP_DEVICE(self);
-    FpcOperation op = self->current_op;
+  FpDevice *device = FP_DEVICE(self);
+  FpcOperation op = self->current_op;
 
-    fpc_err(self, "Error: %s", error->message);
+  fpc_err(self, "Error: %s", error->message);
 
-    self->current_op = FPC_OP_NONE;
-    fpc_set_state(self, FPC_STATE_NONE);
+  self->current_op = FPC_OP_NONE;
+  fpc_set_state(self, FPC_STATE_NONE);
 
-    switch (op)
-    {
-        case FPC_OP_OPEN:
-            fpi_device_open_complete(device, error);
-            break;
-        case FPC_OP_ENROLL:
-            fpi_device_enroll_complete(device, NULL, error);
-            break;
-        case FPC_OP_VERIFY:
-            fpi_device_verify_complete(device, error);
-            break;
-        case FPC_OP_IDENTIFY:
-            fpi_device_identify_complete(device, error);
-            break;
-        case FPC_OP_CAPTURE:
-            fpi_device_capture_complete(device, NULL, error);
-            break;
-        default:
-            g_error_free(error);
-            break;
-    }
+  switch (op)
+  {
+    case FPC_OP_OPEN:
+      fpi_device_open_complete(device, error);
+      break;
+    case FPC_OP_ENROLL:
+      fpi_device_enroll_complete(device, NULL, error);
+      break;
+    case FPC_OP_VERIFY:
+      fpi_device_verify_complete(device, error);
+      break;
+    case FPC_OP_IDENTIFY:
+      fpi_device_identify_complete(device, error);
+      break;
+    case FPC_OP_CAPTURE:
+      fpi_device_capture_complete(device, NULL, error);
+      break;
+    default:
+      g_error_free(error);
+      break;
+  }
 }
 
+static void
+fpc_arm_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
+               gpointer user_data, GError *error)
+{
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+
+  if (error) {
+    fpc_warn(self, "Failed to ARM sensor: %s. Assuming session lost.", error->message);
+    g_error_free(error);
+
+    /* Сбрасываем TLS и пробуем заново полную инициализацию */
+    fpc_tls_cleanup(self); 
+    fpc_set_state(self, FPC_STATE_INIT_INDICATE);
+    fpc_ssm_run_state(self);
+    return;
+  }
+
+  /* Если успешно - переходим к ожиданию пальца */
+  fpc_set_state(self, FPC_STATE_CAPTURE_WAIT_FINGER);
+  fpc_ssm_run_state(self);
+}
 /* ============== OpenSSL PSK Callback ============== */
 
 static unsigned int
@@ -393,22 +416,22 @@ psk_client_cb(SSL *ssl, const char *hint,
               char *identity, unsigned int max_identity_len,
               unsigned char *psk, unsigned int max_psk_len)
 {
-    (void)ssl;
-    (void)hint;
+  (void)ssl;
+  (void)hint;
 
-    fp_dbg("PSK callback: hint='%s'", hint ? hint : "(null)");
+  fp_dbg("PSK callback: hint='%s'", hint ? hint : "(null)");
 
-    if (max_identity_len < sizeof(PSK_IDENTITY) ||
-        max_psk_len < sizeof(FPC_PSK))
-    {
-        fp_err("PSK buffer too small");
-        return 0;
-    }
+  if (max_identity_len < sizeof(PSK_IDENTITY) ||
+    max_psk_len < sizeof(FPC_PSK))
+  {
+    fp_err("PSK buffer too small");
+    return 0;
+  }
 
-    strncpy(identity, PSK_IDENTITY, max_identity_len);
-    memcpy(psk, FPC_PSK, sizeof(FPC_PSK));
+  strncpy(identity, PSK_IDENTITY, max_identity_len);
+  memcpy(psk, FPC_PSK, sizeof(FPC_PSK));
 
-    return sizeof(FPC_PSK);
+  return sizeof(FPC_PSK);
 }
 
 /* ============== TLS Functions ============== */
@@ -416,93 +439,93 @@ psk_client_cb(SSL *ssl, const char *hint,
 static gboolean
 fpc_tls_init(FpiDeviceFpcA921 *self, GError **error)
 {
-    fpc_dbg(self, "Initializing OpenSSL TLS");
+  fpc_dbg(self, "Initializing OpenSSL TLS");
 
-    self->ssl_ctx = SSL_CTX_new(TLS_client_method());
-    if (self->ssl_ctx == NULL)
-    {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                    "SSL_CTX_new failed");
-        return FALSE;
-    }
+  self->ssl_ctx = SSL_CTX_new(TLS_client_method());
+  if (self->ssl_ctx == NULL)
+  {
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                "SSL_CTX_new failed");
+    return FALSE;
+  }
 
-    SSL_CTX_set_min_proto_version(self->ssl_ctx, TLS1_2_VERSION);
-    SSL_CTX_set_max_proto_version(self->ssl_ctx, TLS1_2_VERSION);
+  SSL_CTX_set_min_proto_version(self->ssl_ctx, TLS1_2_VERSION);
+  SSL_CTX_set_max_proto_version(self->ssl_ctx, TLS1_2_VERSION);
 
-    if (SSL_CTX_set_cipher_list(self->ssl_ctx, 
-            "PSK-AES128-GCM-SHA256:PSK-AES256-GCM-SHA384:PSK-AES128-CBC-SHA256") != 1)
-    {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                    "Failed to set cipher list");
-        SSL_CTX_free(self->ssl_ctx);
-        self->ssl_ctx = NULL;
-        return FALSE;
-    }
+  if (SSL_CTX_set_cipher_list(self->ssl_ctx, 
+                              "PSK-AES128-GCM-SHA256:PSK-AES256-GCM-SHA384:PSK-AES128-CBC-SHA256") != 1)
+  {
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                "Failed to set cipher list");
+    SSL_CTX_free(self->ssl_ctx);
+    self->ssl_ctx = NULL;
+    return FALSE;
+  }
 
-    SSL_CTX_set_psk_client_callback(self->ssl_ctx, psk_client_cb);
+  SSL_CTX_set_psk_client_callback(self->ssl_ctx, psk_client_cb);
 
-    self->ssl = SSL_new(self->ssl_ctx);
-    if (self->ssl == NULL)
-    {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "SSL_new failed");
-        SSL_CTX_free(self->ssl_ctx);
-        self->ssl_ctx = NULL;
-        return FALSE;
-    }
+  self->ssl = SSL_new(self->ssl_ctx);
+  if (self->ssl == NULL)
+  {
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "SSL_new failed");
+    SSL_CTX_free(self->ssl_ctx);
+    self->ssl_ctx = NULL;
+    return FALSE;
+  }
 
-    self->rbio = BIO_new(BIO_s_mem());
-    self->wbio = BIO_new(BIO_s_mem());
+  self->rbio = BIO_new(BIO_s_mem());
+  self->wbio = BIO_new(BIO_s_mem());
 
-    if (self->rbio == NULL || self->wbio == NULL)
-    {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "BIO_new failed");
-        if (self->rbio) BIO_free(self->rbio);
-        if (self->wbio) BIO_free(self->wbio);
-        self->rbio = NULL;
-        self->wbio = NULL;
-        SSL_free(self->ssl);
-        self->ssl = NULL;
-        SSL_CTX_free(self->ssl_ctx);
-        self->ssl_ctx = NULL;
-        return FALSE;
-    }
+  if (self->rbio == NULL || self->wbio == NULL)
+  {
+    g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "BIO_new failed");
+    if (self->rbio) BIO_free(self->rbio);
+    if (self->wbio) BIO_free(self->wbio);
+    self->rbio = NULL;
+    self->wbio = NULL;
+    SSL_free(self->ssl);
+    self->ssl = NULL;
+    SSL_CTX_free(self->ssl_ctx);
+    self->ssl_ctx = NULL;
+    return FALSE;
+  }
 
-    SSL_set_bio(self->ssl, self->rbio, self->wbio);
-    SSL_set_connect_state(self->ssl);
+  SSL_set_bio(self->ssl, self->rbio, self->wbio);
+  SSL_set_connect_state(self->ssl);
 
-    self->tls_ready = FALSE;
-    self->handshake_iterations = 0;
+  self->tls_ready = FALSE;
+  self->handshake_iterations = 0;
 
-    fpc_dbg(self, "TLS initialized (OpenSSL %s)", 
-             OpenSSL_version(OPENSSL_VERSION));
+  fpc_dbg(self, "TLS initialized (OpenSSL %s)", 
+          OpenSSL_version(OPENSSL_VERSION));
 
-    return TRUE;
+  return TRUE;
 }
 
 static void
 fpc_tls_cleanup(FpiDeviceFpcA921 *self)
 {
-    fpc_dbg(self, "Cleaning up TLS");
+  fpc_dbg(self, "Cleaning up TLS");
 
-    if (self->ssl != NULL)
-    {
-        SSL_free(self->ssl);
-        self->ssl = NULL;
-        self->rbio = NULL;
-        self->wbio = NULL;
-    }
+  if (self->ssl != NULL)
+  {
+    SSL_free(self->ssl);
+    self->ssl = NULL;
+    self->rbio = NULL;
+    self->wbio = NULL;
+  }
 
-    if (self->ssl_ctx != NULL)
-    {
-        SSL_CTX_free(self->ssl_ctx);
-        self->ssl_ctx = NULL;
-    }
+  if (self->ssl_ctx != NULL)
+  {
+    SSL_CTX_free(self->ssl_ctx);
+    self->ssl_ctx = NULL;
+  }
 
-    self->tls_ready = FALSE;
+  self->tls_ready = FALSE;
 
-    g_clear_pointer(&self->tls_send_buf, g_free);
-    self->tls_send_len = 0;
-    self->tls_send_offset = 0;
+  g_clear_pointer(&self->tls_send_buf, g_free);
+  self->tls_send_len = 0;
+  self->tls_send_offset = 0;
 }
 
 /* ============== USB Operations ============== */
@@ -513,29 +536,29 @@ fpc_send_ctrl_cmd(FpiDeviceFpcA921 *self, guint8 request,
                   const guint8 *data, gsize len,
                   FpiUsbTransferCallback callback)
 {
-    FpiUsbTransfer *transfer;
-    GCancellable *cancellable = NULL;
+  FpiUsbTransfer *transfer;
+  GCancellable *cancellable = NULL;
 
-    fpc_dbg(self, "CTRL OUT: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
-            request, value, index, len);
+  fpc_dbg(self, "CTRL OUT: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
+          request, value, index, len);
 
-    if (data != NULL && len > 0)
-        fpc_log_hex(self, "TX", data, len);
+  if (data != NULL && len > 0)
+    fpc_log_hex(self, "TX", data, len);
 
-    transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-    transfer->short_is_error = FALSE;
+  transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+  transfer->short_is_error = FALSE;
 
-    fpi_usb_transfer_fill_control(transfer,
-                                  G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
-                                  G_USB_DEVICE_REQUEST_TYPE_VENDOR,
-                                  G_USB_DEVICE_RECIPIENT_DEVICE,
-                                  request, value, index, len);
+  fpi_usb_transfer_fill_control(transfer,
+                                G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
+                                G_USB_DEVICE_REQUEST_TYPE_VENDOR,
+                                G_USB_DEVICE_RECIPIENT_DEVICE,
+                                request, value, index, len);
 
-    if (data != NULL && len > 0)
-        memcpy(transfer->buffer, data, len);
+  if (data != NULL && len > 0)
+    memcpy(transfer->buffer, data, len);
 
-    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
-    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
+  cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+  fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
 }
 
 static void
@@ -543,41 +566,41 @@ fpc_recv_ctrl(FpiDeviceFpcA921 *self, guint8 request,
               guint16 value, guint16 index, gsize len,
               FpiUsbTransferCallback callback)
 {
-    FpiUsbTransfer *transfer;
-    GCancellable *cancellable = NULL;
+  FpiUsbTransfer *transfer;
+  GCancellable *cancellable = NULL;
 
-    fpc_dbg(self, "CTRL IN: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
-            request, value, index, len);
+  fpc_dbg(self, "CTRL IN: req=0x%02X val=0x%04X idx=0x%04X len=%zu",
+          request, value, index, len);
 
-    transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-    transfer->short_is_error = FALSE;
+  transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+  transfer->short_is_error = FALSE;
 
-    fpi_usb_transfer_fill_control(transfer,
-                                  G_USB_DEVICE_DIRECTION_DEVICE_TO_HOST,
-                                  G_USB_DEVICE_REQUEST_TYPE_VENDOR,
-                                  G_USB_DEVICE_RECIPIENT_DEVICE,
-                                  request, value, index, len);
+  fpi_usb_transfer_fill_control(transfer,
+                                G_USB_DEVICE_DIRECTION_DEVICE_TO_HOST,
+                                G_USB_DEVICE_REQUEST_TYPE_VENDOR,
+                                G_USB_DEVICE_RECIPIENT_DEVICE,
+                                request, value, index, len);
 
-    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
-    fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
+  cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+  fpi_usb_transfer_submit(transfer, USB_TIMEOUT_MS, cancellable, callback, NULL);
 }
 
 static void
 fpc_recv_bulk(FpiDeviceFpcA921 *self, gsize len, guint timeout_ms,
               FpiUsbTransferCallback callback)
 {
-    FpiUsbTransfer *transfer;
-    GCancellable *cancellable = NULL;
+  FpiUsbTransfer *transfer;
+  GCancellable *cancellable = NULL;
 
-    fpc_dbg(self, "BULK IN: len=%zu timeout=%u", len, timeout_ms);
+  fpc_dbg(self, "BULK IN: len=%zu timeout=%u", len, timeout_ms);
 
-    transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-    transfer->short_is_error = FALSE;
+  transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+  transfer->short_is_error = FALSE;
 
-    fpi_usb_transfer_fill_bulk(transfer, EP_IN, len);
+  fpi_usb_transfer_fill_bulk(transfer, EP_IN, len);
 
-    cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
-    fpi_usb_transfer_submit(transfer, timeout_ms, cancellable, callback, NULL);
+  cancellable = fpi_device_get_cancellable (FP_DEVICE(self));
+  fpi_usb_transfer_submit(transfer, timeout_ms, cancellable, callback, NULL);
 }
 
 /* ============== USB Callbacks ============== */
@@ -586,210 +609,219 @@ static void
 fpc_ctrl_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
                 gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
-    {
-        fpc_complete_with_error(self, error);
-        return;
-    }
+  if (error != NULL)
+  {
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    fpc_dbg(self, "Control OUT OK");
+  fpc_dbg(self, "Control OUT OK");
 
 
-    fpc_ssm_next_state(self);
+  fpc_ssm_next_state(self);
 }
 
 
 static void
 fpc_abort_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
-                gpointer user_data, GError *error)
+                 gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
-    {
-        fpc_dbg(self, "ABORTED ERROR");
-        fpc_complete_with_error(self, error);
-        return;
-    }
+  if (error != NULL)
+  {
+    fpc_dbg(self, "ABORTED ERROR");
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    fpc_dbg(self, "ABORTED");
+  fpc_dbg(self, "ABORTED");
 
-    fpc_set_state(self, FPC_STATE_NONE);
-    fpc_ssm_run_state(self);
+  fpc_set_state(self, FPC_STATE_NONE);
+  fpc_ssm_run_state(self);
 }
 
 static void
 fpc_clr_img_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
-                      gpointer user_data, GError *error)
+                   gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
-    {
-        fpc_complete_with_error(self, error);
-        return;
-    }
+  if (error != NULL)
+  {
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    fpc_ssm_next_state(self);
+  fpc_ssm_next_state(self);
 }
 
 static void
 fpc_init_get_state_cb(FpiUsbTransfer *transfer, FpDevice *device,
                       gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
-    {
-        fpc_complete_with_error(self, error);
-        return;
-    }
+  if (error != NULL)
+  {
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    if (transfer->actual_length >= 34)
-    {
-        const guint8 *state = transfer->buffer;
+  if (transfer->actual_length >= 34)
+  {
+    const guint8 *state = transfer->buffer;
 
-        memcpy(self->version, state, 4);
-        memcpy(self->model, &state[19], 7);
-        self->model[7] = '\0';
+    memcpy(self->version, state, 4);
+    memcpy(self->model, &state[19], 7);
+    self->model[7] = '\0';
 
-        guint16 vid = state[30] | ((guint16)state[31] << 8);
-        guint16 pid = state[32] | ((guint16)state[33] << 8);
+    guint16 vid = state[30] | ((guint16)state[31] << 8);
+    guint16 pid = state[32] | ((guint16)state[33] << 8);
 
-        fpc_dbg(self, "Device: %s v%d.%d.%d.%d (VID:PID=%04X:%04X)",
-                 self->model,
-                 self->version[0], self->version[1],
-                 self->version[2], self->version[3],
-                 vid, pid);
-    }
+    fpc_dbg(self, "Device: %s v%d.%d.%d.%d (VID:PID=%04X:%04X)",
+            self->model,
+            self->version[0], self->version[1],
+            self->version[2], self->version[3],
+            vid, pid);
+  }
 
-    fpc_send_ctrl_cmd(self, CMD_CLR_IMG, 0, 0, NULL, 0, fpc_clr_img_cmd_cb);
+  fpc_send_ctrl_cmd(self, CMD_CLR_IMG, 0, 0, NULL, 0, fpc_clr_img_cmd_cb);
 }
 
 static void
 fpc_init_session_cb(FpiUsbTransfer *transfer, FpDevice *device,
                     gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
+  if (error != NULL)
+  {
+    if (g_error_matches(error, G_USB_DEVICE_ERROR,
+                        G_USB_DEVICE_ERROR_TIMED_OUT))
     {
-        if (g_error_matches(error, G_USB_DEVICE_ERROR,
-                            G_USB_DEVICE_ERROR_TIMED_OUT))
-        {
-            fpc_dbg(self, "Session read timeout (OK)");
-            g_error_free(error);
-        }
-        else
-        {
-            fpc_complete_with_error(self, error);
-            return;
-        }
+      fpc_dbg(self, "Session read timeout (OK)");
+      g_error_free(error);
     }
+    else
+  {
+      fpc_complete_with_error(self, error);
+      return;
+    }
+  }
 
-    fpc_ssm_next_state(self);
+  fpc_ssm_next_state(self);
 }
 
 static void
 fpc_tls_send_chunk_cb(FpiUsbTransfer *transfer, FpDevice *device,
                       gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
-    {
-        fpc_complete_with_error(self, error);
-        return;
-    }
+  if (error != NULL)
+  {
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    fpc_dbg(self, "TLS chunk sent, offset=%zu/%zu",
-            self->tls_send_offset, self->tls_send_len);
+  fpc_dbg(self, "TLS chunk sent, offset=%zu/%zu",
+          self->tls_send_offset, self->tls_send_len);
 
-    if (self->tls_send_offset < self->tls_send_len)
-    {
-        fpc_ssm_run_state(self);
-    }
-    else
-    {
-        g_clear_pointer(&self->tls_send_buf, g_free);
-        self->tls_send_len = 0;
-        self->tls_send_offset = 0;
-        fpc_ssm_next_state(self);
-    }
+  if (self->tls_send_offset < self->tls_send_len)
+  {
+    fpc_ssm_run_state(self);
+  }
+  else
+{
+    g_clear_pointer(&self->tls_send_buf, g_free);
+    self->tls_send_len = 0;
+    self->tls_send_offset = 0;
+    fpc_ssm_next_state(self);
+  }
 }
 
 static void
 fpc_tls_recv_cb(FpiUsbTransfer *transfer, FpDevice *device,
                 gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (error != NULL)
+  if (error != NULL)
+  {
+    if (g_error_matches(error, G_USB_DEVICE_ERROR,
+                        G_USB_DEVICE_ERROR_TIMED_OUT))
     {
-        if (g_error_matches(error, G_USB_DEVICE_ERROR,
-                            G_USB_DEVICE_ERROR_TIMED_OUT))
-        {
-            fpc_dbg(self, "TLS recv timeout, checking handshake");
-            g_error_free(error);
-            fpc_set_state(self, FPC_STATE_TLS_HANDSHAKE_CHECK);
-            fpc_ssm_run_state(self);
-            return;
-        }
-        fpc_complete_with_error(self, error);
-        return;
+      fpc_dbg(self, "TLS recv timeout, checking handshake");
+      g_error_free(error);
+      fpc_set_state(self, FPC_STATE_TLS_HANDSHAKE_CHECK);
+      fpc_ssm_run_state(self);
+      return;
     }
+    fpc_complete_with_error(self, error);
+    return;
+  }
 
-    if (transfer->actual_length > 0)
+  if (transfer->actual_length > 0)
+  {
+    const guint8 *data = transfer->buffer;
+    gsize len = transfer->actual_length;
+
+    if (len >= 12 && data[0] == EVT_TLS)
     {
-        const guint8 *data = transfer->buffer;
-        gsize len = transfer->actual_length;
-
-        if (len >= 12 && data[0] == EVT_TLS)
-        {
-            fpc_dbg(self, "TLS event: %zu payload bytes", len - 12);
-            BIO_write(self->rbio, data + 12, (int)(len - 12));
-        }
-        else
-        {
-            fpc_dbg(self, "Raw data: %zu bytes", len);
-            BIO_write(self->rbio, data, (int)len);
-        }
+      fpc_dbg(self, "TLS event: %zu payload bytes", len - 12);
+      BIO_write(self->rbio, data + 12, (int)(len - 12));
     }
+    else
+  {
+      fpc_dbg(self, "Raw data: %zu bytes", len);
+      BIO_write(self->rbio, data, (int)len);
+    }
+  }
 
-    fpc_ssm_next_state(self);
+  fpc_ssm_next_state(self);
 }
 
 static void
 fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
                    gpointer user_data, GError *error)
 {
-    FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
 
-    if (self->cancelling)
+  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED) || self->cancelling)
+  {
+    fpc_dbg(self, "Operation cancelled, sending HW ABORT");
+
+    /* Важно: очистить ошибку, если она есть */
+    if (error) g_error_free(error);
+
+    self->cancelling = FALSE;
+
+    /* ОТПРАВЛЯЕМ КОМАНДУ ABORT НА УСТРОЙСТВО */
+    /* Используем NULL callback, так как мы завершаем работу и нам не важен ответ */
+    fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, NULL);
+
+    GError *cancel_err = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED, "Cancelled");
+    fpc_complete_with_error(self, cancel_err);
+    return;
+  }
+
+  if (error != NULL)
+  {
+    /* Если таймаут USB (не пальца) — просто перезапускаем ожидание */
+    if (g_error_matches(error, G_USB_DEVICE_ERROR, G_USB_DEVICE_ERROR_TIMED_OUT))
     {
-        if (error) g_error_free(error);
-
-        self->cancelling = FALSE;
-        GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
-                                           "Operation cancelled");
-
-        fpc_complete_with_error(self, cancel_error);
-        //fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_abort_cmd_cb);
-        return;
-    }
-
-    if (error != NULL)
-    {
-        if (g_error_matches(error, G_USB_DEVICE_ERROR,
-                            G_USB_DEVICE_ERROR_TIMED_OUT))
-        {
-            fpc_dbg(self, "Waiting for finger...");
-            g_error_free(error);
-            fpc_ssm_run_state(self);
-            return;
+      g_error_free(error);
+      /* Проверяем, не зависли ли мы тут навечно */
+      fpc_ssm_run_state(self); 
+      return;
         }
+        
+        /* Если ошибка протокола (EPIPE и т.д.) - возможно TLS сессия умерла */
+        fpc_dbg(self, "USB Error waiting for finger: %s", error->message);
+        self->tls_ready = FALSE; /* Force re-handshake next time */
         fpc_complete_with_error(self, error);
         return;
     }
@@ -885,39 +917,50 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
 
         if (len >= 12 && data[0] == EVT_TLS)
         {
-            BIO_write(self->rbio, data + 12, (int)(len - 12));
+            int written = BIO_write(self->rbio, data + 12, (int)(len - 12));
+            /* Проверка на ошибку записи */
+            if (written <= 0) {
+                fpc_warn(self, "BIO_write failed");
+                /* Handle error */
+            }
 
             guint8 plain[4096];
-            int n = SSL_read(self->ssl, plain, sizeof(plain));
-
-            if (n > 0)
+            int n;
+            
+            /* Цикл чтения, так как из одного TLS пакета может вылезти несколько блоков */
+            while ((n = SSL_read(self->ssl, plain, sizeof(plain))) > 0)
             {
-                fpc_dbg(self, "Decrypted: %d bytes (total: %zu/%zu)",
-                        n, self->image_buffer_len + n, expected_size);
-
-                /* Grow buffer if needed */
+                /* Безопасное увеличение буфера */
                 if (self->image_buffer_len + (gsize)n > self->image_buffer_alloc)
                 {
-                    self->image_buffer_alloc = MAX(
-                        self->image_buffer_alloc * 2,
-                        self->image_buffer_len + (gsize)n + 4096
-                    );
-                    self->image_buffer = g_realloc(self->image_buffer,
-                                                   self->image_buffer_alloc);
+                    gsize new_alloc = MAX(self->image_buffer_alloc * 2, 
+                                          self->image_buffer_len + (gsize)n + 4096);
+                    guint8 *new_buf = g_realloc(self->image_buffer, new_alloc);
+                    if (!new_buf) {
+                        fpc_complete_with_error(self, g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "OOM"));
+                        return;
+                    }
+                    self->image_buffer = new_buf;
+                    self->image_buffer_alloc = new_alloc;
                 }
 
-                memcpy(self->image_buffer + self->image_buffer_len, 
-                       plain, (gsize)n);
+                memcpy(self->image_buffer + self->image_buffer_len, plain, (gsize)n);
                 self->image_buffer_len += (gsize)n;
-
-                /* Check if complete */
-                if (self->image_buffer_len >= expected_size)
-                {
-                    fpc_dbg(self, "Image complete: %zu bytes", 
-                             self->image_buffer_len);
-                    fpc_ssm_next_state(self);
-                    return;
-                }
+            }
+            
+            /* Проверка ошибок SSL, если n <= 0 */
+            int ssl_err = SSL_get_error(self->ssl, n);
+            if (n < 0 && ssl_err != SSL_ERROR_WANT_READ && ssl_err != SSL_ERROR_WANT_WRITE) {
+                fpc_warn(self, "SSL decryption error: %d", ssl_err);
+                // Можно сбросить сессию
+                self->tls_ready = FALSE;
+            }
+            
+            /* Проверка завершения */
+            if (self->image_buffer_len >= expected_size)
+            {
+                fpc_ssm_next_state(self);
+                return;
             }
         }
 
@@ -1171,10 +1214,10 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
         /* ===== Image Capture ===== */
 
         case FPC_STATE_CAPTURE_ARM:
-            fpc_dbg(self, "Arming sensor");
-            fpc_send_ctrl_cmd(self, CMD_ARM, 0x0001, 0,
-                              self->session_id, sizeof(self->session_id),
-                              fpc_ctrl_cmd_cb);
+          fpc_dbg(self, "Arming sensor");
+          fpc_send_ctrl_cmd(self, CMD_ARM, 0x0001, 0,
+                      self->session_id, sizeof(self->session_id),
+                      fpc_arm_cmd_cb); /* Используем новый колбэк! */
             break;
 
         case FPC_STATE_CAPTURE_WAIT_FINGER:
