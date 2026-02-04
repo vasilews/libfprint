@@ -17,7 +17,7 @@ typedef struct _FpiCustomFeatures FpiCustomFeatures;
 
 /* Configuration */
 #define FPI_CUSTOM_MIN_FEATURES     10
-#define FPI_CUSTOM_MATCH_THRESHOLD  10
+#define FPI_CUSTOM_MATCH_THRESHOLD  7 
 
 /**
  * fpi_custom_extract_features:
