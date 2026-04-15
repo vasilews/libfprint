@@ -1,8 +1,5 @@
 /* fpc_a921.c - Драйвер сканера отпечатков пальцев FPC для libfprint
  *
- * Драйвер основан на FpDevice (а не FpImageDevice) для полного контроля над протоколом.
- * Использует пользовательский алгоритм сопоставления на основе SIFT.
- *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
 
@@ -73,7 +70,7 @@
 
 /* --- Тайм-ауты (мс) --- */
 #define USB_TIMEOUT_MS 1000 /* Тайм-аут для стандартных USB команд */
-#define FINGER_TIMEOUT_MS 15000 /* Время ожидания пальца */
+#define FINGER_TIMEOUT_MS 0 /* Время ожидания пальца */
 #define IMAGE_TIMEOUT_MS 2000 /* Тайм-аут получения пакета изображения */
 #define TLS_TIMEOUT_MS 2000 /* Тайм-аут обмена TLS данными */
 
@@ -93,7 +90,7 @@
 #define EP_IN 0x81 /* Адрес входной конечной точки для чтения данных */
 
 /* --- Лимиты --- */
-#define MAX_HANDSHAKE_ITERATIONS 20 /* Макс. кол-во итераций handshake перед тайм-аутом */
+#define MAX_HANDSHAKE_ITERATIONS 12 /* Макс. кол-во итераций handshake перед тайм-аутом */
 #define MAX_IMAGE_PACKETS 100 /* Макс. кол-во пакетов на одно изображение */
 
 /* --- Регистрация --- */
@@ -142,13 +139,11 @@ typedef enum {
   FPC_STATE_INIT_RECV_SESSION, /* Ожидание подтверждения сессии */
   FPC_STATE_INIT_SET_TLS_KEY, /* Установка TLS ключа */
 
-  /* --- TLS Рукопожатие (Handshake) --- */
+  /* --- TLS Рукопожатие (Handshake) - УПРОЩЕНО --- */
   FPC_STATE_TLS_INIT_CMD, /* Запуск локальной структуры TLS */
-  FPC_STATE_TLS_HANDSHAKE_START, /* Начало процесса обмена */
-  FPC_STATE_TLS_SEND_DATA, /* Подготовка данных к отправке */
-  FPC_STATE_TLS_SEND_CHUNK, /* Отправка чанка данных */
-  FPC_STATE_TLS_RECV_DATA, /* Чтение ответа от устройства */
-  FPC_STATE_TLS_HANDSHAKE_CHECK, /* Проверка статуса завершения handshake */
+  FPC_STATE_TLS_DO_HANDSHAKE, /* Вызов SSL_do_handshake и определение действия */
+  FPC_STATE_TLS_SEND_CHUNKS, /* Отправка чанков (цикл в одном состоянии) */
+  FPC_STATE_TLS_RECV_DATA, /* Чтение ответа и возврат к handshake */
 
   /* --- Захват изображения --- */
   FPC_STATE_CAPTURE_ARM, /* Команда ARM: перейти в режим ожидания пальца */
@@ -184,11 +179,9 @@ fpc_state_to_string(FpcState state)
     case FPC_STATE_INIT_RECV_SESSION: return "INIT_RECV_SESSION";
     case FPC_STATE_INIT_SET_TLS_KEY: return "INIT_SET_TLS_KEY";
     case FPC_STATE_TLS_INIT_CMD: return "TLS_INIT_CMD";
-    case FPC_STATE_TLS_HANDSHAKE_START: return "TLS_HANDSHAKE_START";
-    case FPC_STATE_TLS_SEND_DATA: return "TLS_SEND_DATA";
-    case FPC_STATE_TLS_SEND_CHUNK: return "TLS_SEND_CHUNK";
+    case FPC_STATE_TLS_DO_HANDSHAKE: return "TLS_DO_HANDSHAKE";
+    case FPC_STATE_TLS_SEND_CHUNKS: return "TLS_SEND_CHUNKS";
     case FPC_STATE_TLS_RECV_DATA: return "TLS_RECV_DATA";
-    case FPC_STATE_TLS_HANDSHAKE_CHECK: return "TLS_HANDSHAKE_CHECK";
     case FPC_STATE_CAPTURE_ARM: return "CAPTURE_ARM";
     case FPC_STATE_CAPTURE_WAIT_FINGER: return "CAPTURE_WAIT_FINGER";
     case FPC_STATE_CAPTURE_GET_IMAGE: return "CAPTURE_GET_IMAGE";
@@ -364,7 +357,19 @@ fpc_complete_with_error(FpiDeviceFpcA921 *self, GError *error)
   FpDevice *device = FP_DEVICE(self);
   FpcOperation op = self->current_op;
 
+  if (!error)
+  {
+    fpc_err(self, "complete_with_error called with NULL error");
+    error = g_error_new(FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL,
+                        "Unknown error");
+  }
+
   fpc_err(self, "Error: %s", error->message);
+
+  /* Очищаем буферы при ошибке */
+  g_clear_pointer(&self->tls_send_buf, g_free);
+  self->tls_send_len = 0;
+  self->tls_send_offset = 0;
 
   /* Сбрасываем флаги состояния */
   self->current_op = FPC_OP_NONE;
@@ -497,12 +502,16 @@ fpc_tls_init(FpiDeviceFpcA921 *self, GError **error)
 static void
 fpc_tls_cleanup(FpiDeviceFpcA921 *self)
 {
+  if (!self)
+    return;
+
   fpc_dbg(self, "Cleaning up TLS");
 
   if (self->ssl != NULL)
   {
     SSL_free(self->ssl);
     self->ssl = NULL;
+    /* BIO освобождаются автоматически через SSL_free */
     self->rbio = NULL;
     self->wbio = NULL;
   }
@@ -514,7 +523,9 @@ fpc_tls_cleanup(FpiDeviceFpcA921 *self)
   }
 
   self->tls_ready = FALSE;
+  self->handshake_iterations = 0;
 
+  /* Очищаем буферы отправки */
   g_clear_pointer(&self->tls_send_buf, g_free);
   self->tls_send_len = 0;
   self->tls_send_offset = 0;
@@ -626,13 +637,25 @@ fpc_abort_cmd_cb(FpiUsbTransfer *transfer, FpDevice *device,
 
   if (error != NULL)
   {
-    fpc_warn(self, "ABORT command failed: %s (continuing)", error->message);
+    /* Игнорируем ошибки ABORT - transfer может быть уже отменен */
+    fpc_dbg(self, "ABORT command failed: %s (continuing)", error->message);
     g_error_free(error);
   }
+  else
+  {
+    fpc_dbg(self, "ABORT command completed");
+  }
 
-  fpc_dbg(self, "ABORTED");
+  /* Очищаем TLS если была ошибка при отмене */
+  if (self->cancelling)
+  {
+    fpc_tls_cleanup(self);
+    self->tls_ready = FALSE;
+  }
+
+  /* Завершаем отмену */
+  self->cancelling = FALSE;
   fpc_set_state(self, FPC_STATE_NONE);
-  fpc_ssm_run_state(self);
 }
 
 /* Колбэк завершения команды CLR_IMG */
@@ -721,25 +744,27 @@ fpc_tls_send_chunk_cb(FpiUsbTransfer *transfer, FpDevice *device,
 
   if (error != NULL)
   {
+    g_clear_pointer(&self->tls_send_buf, g_free);
+    self->tls_send_len = 0;
+    self->tls_send_offset = 0;
     fpc_complete_with_error(self, error);
     return;
   }
 
-  fpc_dbg(self, "TLS chunk sent, offset=%zu/%zu",
-          self->tls_send_offset, self->tls_send_len);
-
+  /* Проверяем, есть ли еще данные для отправки */
   if (self->tls_send_offset < self->tls_send_len)
   {
-    /* Отправляем следующий чанк */
+    /* Остаемся в том же состоянии для отправки следующего чанка */
     fpc_ssm_run_state(self);
   }
   else
-{
-    /* Все данные отправлены, чистим буфер */
+  {
+    /* Все данные отправлены, чистим буфер и переходим к получению */
     g_clear_pointer(&self->tls_send_buf, g_free);
     self->tls_send_len = 0;
     self->tls_send_offset = 0;
-    fpc_ssm_next_state(self);
+    fpc_set_state(self, FPC_STATE_TLS_RECV_DATA);
+    fpc_ssm_run_state(self);
   }
 }
 
@@ -755,10 +780,9 @@ fpc_tls_recv_cb(FpiUsbTransfer *transfer, FpDevice *device,
     if (g_error_matches(error, G_USB_DEVICE_ERROR,
                         G_USB_DEVICE_ERROR_TIMED_OUT))
     {
-      /* Если данных нет, проверяем состояние handshake */
-      fpc_dbg(self, "TLS recv timeout, checking handshake");
+      /* Таймаут - просто возвращаемся к handshake */
       g_error_free(error);
-      fpc_set_state(self, FPC_STATE_TLS_HANDSHAKE_CHECK);
+      fpc_set_state(self, FPC_STATE_TLS_DO_HANDSHAKE);
       fpc_ssm_run_state(self);
       return;
     }
@@ -774,18 +798,17 @@ fpc_tls_recv_cb(FpiUsbTransfer *transfer, FpDevice *device,
     /* Пакет может быть обернут в событие EVT_TLS */
     if (len >= 12 && data[0] == EVT_TLS)
     {
-      fpc_dbg(self, "TLS event: %zu payload bytes", len - 12);
       BIO_write(self->rbio, data + 12, (int)(len - 12));
     }
     else
-  {
-      /* Или приходить сырым */
-      fpc_dbg(self, "Raw data: %zu bytes", len);
+    {
       BIO_write(self->rbio, data, (int)len);
     }
   }
 
-  fpc_ssm_next_state(self);
+  /* Возвращаемся к handshake для обработки полученных данных */
+  fpc_set_state(self, FPC_STATE_TLS_DO_HANDSHAKE);
+  fpc_ssm_run_state(self);
 }
 
 /* Ожидание нажатия пальца */
@@ -798,7 +821,15 @@ fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
   /* Если была нажата отмена */
   if (self->cancelling)
   {
-    fpc_dbg(self, "Operation cancelled");
+    fpc_dbg(self, "Operation cancelled during finger wait");
+    
+    /* Очищаем ошибку если она от отмены */
+    if (error && g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      g_error_free(error);
+      error = NULL;
+    }
+    
     GError *cancel_err = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED, "Cancelled");
     fpc_complete_with_error(self, cancel_err);
     return;
@@ -811,6 +842,16 @@ fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
     {
       g_error_free(error);
       fpc_ssm_run_state(self);
+      return;
+    }
+
+    /* Если это отмена - обрабатываем */
+    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      fpc_dbg(self, "Transfer cancelled");
+      g_error_free(error);
+      GError *cancel_err = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED, "Cancelled");
+      fpc_complete_with_error(self, cancel_err);
       return;
     }
 
@@ -846,12 +887,16 @@ fpc_wait_finger_cb(FpiUsbTransfer *transfer, FpDevice *device,
 
       case EVT_FINGER_DWN:
         fpc_dbg(self, "Finger detected!");
+        /* Сообщаем о наличии пальца */
+        fpi_device_report_finger_status(device, FP_FINGER_STATUS_PRESENT);
         /* Переходим к захвату изображения */
         fpc_ssm_next_state(self);
         break;
 
       case EVT_FINGER_UP:
         fpc_dbg(self, "Finger removed");
+        /* Сообщаем об отсутствии пальца */
+        fpi_device_report_finger_status(device, FP_FINGER_STATUS_NONE);
         fpc_ssm_run_state(self);
         break;
 
@@ -879,6 +924,15 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
   /* Если операция отменена */
   if (self->cancelling)
   {
+    fpc_dbg(self, "Image reception cancelled");
+    
+    /* Очищаем ошибку если она от отмены */
+    if (error && g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      g_error_free(error);
+      error = NULL;
+    }
+    
     GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
                                        "Operation cancelled");
     fpc_complete_with_error(self, cancel_error);
@@ -890,11 +944,22 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
     if (g_error_matches(error, G_USB_DEVICE_ERROR,
                         G_USB_DEVICE_ERROR_TIMED_OUT))
     {
-      fpc_dbg(self, "Image recv timeout");
       g_error_free(error);
       fpc_ssm_next_state(self);
       return;
     }
+    
+    /* Обработка отмены */
+    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      fpc_dbg(self, "Image transfer cancelled");
+      g_error_free(error);
+      GError *cancel_error = g_error_new(G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                                         "Operation cancelled");
+      fpc_complete_with_error(self, cancel_error);
+      return;
+    }
+    
     fpc_complete_with_error(self, error);
     return;
   }
@@ -905,9 +970,6 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
   {
     const guint8 *data = transfer->buffer;
     gsize len = transfer->actual_length;
-
-    fpc_dbg(self, "Image packet #%d: %zu bytes",
-            self->image_packet_count, len);
 
     if (len >= 12 && data[0] == EVT_TLS)
     {
@@ -928,7 +990,9 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
                                 self->image_buffer_len + (gsize)n + 4096);
           guint8 *new_buf = g_realloc(self->image_buffer, new_alloc);
           if (!new_buf) {
-            fpc_complete_with_error(self, g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "OOM"));
+            GError *oom_error = g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED,
+                                            "Out of memory");
+            fpc_complete_with_error(self, oom_error);
             return;
           }
           self->image_buffer = new_buf;
@@ -941,10 +1005,14 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
       }
 
       /* Проверка ошибок SSL */
-      int ssl_err = SSL_get_error(self->ssl, n);
-      if (n < 0 && ssl_err != SSL_ERROR_WANT_READ && ssl_err != SSL_ERROR_WANT_WRITE) {
-        fpc_warn(self, "SSL decryption error: %d", ssl_err);
-        self->tls_ready = FALSE;
+      if (n < 0)
+      {
+        int ssl_err = SSL_get_error(self->ssl, n);
+        if (ssl_err != SSL_ERROR_WANT_READ && ssl_err != SSL_ERROR_WANT_WRITE)
+        {
+          fpc_warn(self, "SSL decryption error: %d", ssl_err);
+          self->tls_ready = FALSE;
+        }
       }
 
       /* Проверка завершения приема изображения */
@@ -966,7 +1034,7 @@ fpc_recv_image_cb(FpiUsbTransfer *transfer, FpDevice *device,
     fpc_ssm_run_state(self);
   }
   else
-{
+  {
     fpc_ssm_next_state(self);
   }
 }
@@ -997,20 +1065,10 @@ fpc_ssm_next_state(FpiDeviceFpcA921 *self)
       next = FPC_STATE_TLS_INIT_CMD;
       break;
     case FPC_STATE_TLS_INIT_CMD:
-      next = FPC_STATE_TLS_HANDSHAKE_START;
+      next = FPC_STATE_TLS_DO_HANDSHAKE;
       break;
-    case FPC_STATE_TLS_HANDSHAKE_START:
-    case FPC_STATE_TLS_HANDSHAKE_CHECK:
-      return; /* Логика переходов сложная, обрабатывается в run_state */
-    case FPC_STATE_TLS_SEND_DATA:
-      next = FPC_STATE_TLS_SEND_CHUNK;
-      break;
-    case FPC_STATE_TLS_SEND_CHUNK:
-      next = FPC_STATE_TLS_RECV_DATA;
-      break;
-    case FPC_STATE_TLS_RECV_DATA:
-      next = FPC_STATE_TLS_HANDSHAKE_CHECK;
-      break;
+    case FPC_STATE_TLS_DO_HANDSHAKE:
+      return; /* Логика переходов обрабатывается в run_state */
     case FPC_STATE_CAPTURE_ARM:
       next = FPC_STATE_CAPTURE_WAIT_FINGER;
       break;
@@ -1085,7 +1143,7 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
                         fpc_ctrl_cmd_cb);
       break;
 
-    /* ===== TLS Handshake ===== */
+    /* ===== TLS Handshake - УПРОЩЕННАЯ ВЕРСИЯ ===== */
 
     case FPC_STATE_TLS_INIT_CMD:
       /* Инициализируем OpenSSL структуры локально */
@@ -1099,14 +1157,11 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
                         NULL, 0, fpc_ctrl_cmd_cb);
       break;
 
-    case FPC_STATE_TLS_HANDSHAKE_START:
-    case FPC_STATE_TLS_HANDSHAKE_CHECK:
+    case FPC_STATE_TLS_DO_HANDSHAKE:
       {
         int ret, ssl_err;
 
         self->handshake_iterations++;
-        fpc_dbg(self, "Handshake iteration %d",
-                self->handshake_iterations);
 
         if (self->handshake_iterations > MAX_HANDSHAKE_ITERATIONS)
         {
@@ -1120,14 +1175,11 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
         ret = SSL_do_handshake(self->ssl);
         ssl_err = SSL_get_error(self->ssl, ret);
 
-        fpc_dbg(self, "SSL_do_handshake: ret=%d err=%d", ret, ssl_err);
-
         if (ret == 1)
         {
           /* Успех! */
           self->tls_ready = TRUE;
-          fpc_dbg(self, "TLS handshake complete! Cipher: %s",
-                  SSL_get_cipher(self->ssl));
+          fpc_info(self, "TLS established: %s", SSL_get_cipher(self->ssl));
 
           /* Если мы в процессе открытия устройства - завершаем открытие */
           if (self->current_op == FPC_OP_OPEN)
@@ -1137,7 +1189,7 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
             fpi_device_open_complete(FP_DEVICE(self), NULL);
           }
           else
-        {
+          {
             /* Иначе начинаем захват */
             fpc_set_state(self, FPC_STATE_CAPTURE_ARM);
             fpc_ssm_run_state(self);
@@ -1145,16 +1197,23 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
           return;
         }
 
-        /* OpenSSL хочет записать данные (отправить на устройство) */
-        if (ssl_err == SSL_ERROR_WANT_WRITE ||
-          BIO_ctrl_pending(self->wbio) > 0)
+        /* Проверяем, есть ли данные для отправки */
+        int pending = BIO_ctrl_pending(self->wbio);
+        if (pending > 0)
         {
-          fpc_set_state(self, FPC_STATE_TLS_SEND_DATA);
+          /* Читаем данные из wbio */
+          self->tls_send_buf = g_malloc((gsize)pending);
+          self->tls_send_len = (gsize)BIO_read(self->wbio,
+                                               self->tls_send_buf,
+                                               pending);
+          self->tls_send_offset = 0;
+
+          fpc_set_state(self, FPC_STATE_TLS_SEND_CHUNKS);
           fpc_ssm_run_state(self);
           return;
         }
 
-        /* OpenSSL хочет прочитать данные (ждет от устройства) */
+        /* OpenSSL хочет прочитать данные */
         if (ssl_err == SSL_ERROR_WANT_READ)
         {
           fpc_set_state(self, FPC_STATE_TLS_RECV_DATA);
@@ -1170,41 +1229,11 @@ fpc_ssm_run_state(FpiDeviceFpcA921 *self)
       }
       break;
 
-    case FPC_STATE_TLS_SEND_DATA:
-      {
-        /* Достаем данные из wbio для отправки */
-        int pending = BIO_ctrl_pending(self->wbio);
-
-        if (pending > 0)
-        {
-          self->tls_send_buf = g_malloc((gsize)pending);
-          self->tls_send_len = (gsize)BIO_read(self->wbio,
-                                               self->tls_send_buf,
-                                               pending);
-          self->tls_send_offset = 0;
-
-          fpc_dbg(self, "TLS data to send: %zu bytes",
-                  self->tls_send_len);
-
-          fpc_set_state(self, FPC_STATE_TLS_SEND_CHUNK);
-          fpc_ssm_run_state(self);
-        }
-        else
-      {
-          fpc_set_state(self, FPC_STATE_TLS_RECV_DATA);
-          fpc_ssm_run_state(self);
-        }
-      }
-      break;
-
-    case FPC_STATE_TLS_SEND_CHUNK:
+    case FPC_STATE_TLS_SEND_CHUNKS:
       {
         /* Отправляем данные частями (chunks) из-за ограничений устройства */
         gsize remaining = self->tls_send_len - self->tls_send_offset;
         gsize chunk_size = MIN(remaining, TLS_CHUNK_SIZE);
-
-        fpc_dbg(self, "Sending chunk: offset=%zu size=%zu",
-                self->tls_send_offset, chunk_size);
 
         fpc_send_ctrl_cmd(self, CMD_TLS_DATA, 0x0001, 0,
                           self->tls_send_buf + self->tls_send_offset,
@@ -1350,12 +1379,13 @@ fpc_process_captured_image(FpiDeviceFpcA921 *self)
           fpi_custom_features_free(features);
           g_free(rotated);
 
-          /* Плохое качество - просим повторить */
+          /* Используем FP_DEVICE_RETRY для retry-ошибок */
+          GError *retry_error = g_error_new(FP_DEVICE_RETRY,
+                                            FP_DEVICE_RETRY_TOO_SHORT,
+                                            "Poor image quality, please try again");
+          
           fpc_warn(self, "Not enough features, retrying");
-          fpi_device_enroll_progress(device, self->enroll_stage, NULL,
-                                     g_error_new(FP_DEVICE_ERROR,
-                                                 FP_DEVICE_ERROR_DATA_NOT_FOUND,
-                                                 "Poor image quality, please try again"));
+          fpi_device_enroll_progress(device, self->enroll_stage, NULL, retry_error);
 
           fpc_set_state(self, FPC_STATE_CAPTURE_ARM);
           fpc_ssm_run_state(self);
@@ -1447,10 +1477,12 @@ fpc_process_captured_image(FpiDeviceFpcA921 *self)
           fpi_custom_features_free(features);
           g_free(rotated);
 
-          fpi_device_verify_report(device, FPI_MATCH_ERROR, NULL,
-                                   g_error_new(FP_DEVICE_ERROR,
-                                               FP_DEVICE_ERROR_DATA_NOT_FOUND,
-                                               "Could not extract features"));
+          /* Используем FP_DEVICE_RETRY для retry-ошибок */
+          GError *retry_error = g_error_new(FP_DEVICE_RETRY,
+                                            FP_DEVICE_RETRY_TOO_SHORT,
+                                            "Could not extract features");
+          
+          fpi_device_verify_report(device, FPI_MATCH_ERROR, NULL, retry_error);
 
           self->current_op = FPC_OP_NONE;
           fpc_set_state(self, FPC_STATE_NONE);
@@ -1526,10 +1558,12 @@ fpc_process_captured_image(FpiDeviceFpcA921 *self)
           fpi_custom_features_free(features);
           g_free(rotated);
 
-          fpi_device_identify_report(device, NULL, NULL,
-                                     g_error_new(FP_DEVICE_ERROR,
-                                                 FP_DEVICE_ERROR_DATA_NOT_FOUND,
-                                                 "Could not extract features"));
+          /* Используем FP_DEVICE_RETRY для retry-ошибок */
+          GError *retry_error = g_error_new(FP_DEVICE_RETRY,
+                                            FP_DEVICE_RETRY_TOO_SHORT,
+                                            "Could not extract features");
+          
+          fpi_device_identify_report(device, NULL, NULL, retry_error);
 
           self->current_op = FPC_OP_NONE;
           fpc_set_state(self, FPC_STATE_NONE);
@@ -1632,8 +1666,10 @@ fpc_dev_open(FpDevice *device)
     return;
   }
 
-  /* Выделяем память */
-  self->image_buffer_alloc = MAX_TLS_BUF;
+  /* Выделяем память под изображение с правильным размером */
+  const gsize expected_size = IMAGE_HEADER_SIZE +
+    (gsize)IMAGE_RAW_WIDTH * IMAGE_RAW_HEIGHT;
+  self->image_buffer_alloc = expected_size + 1024; /* С запасом */
   self->image_buffer = g_malloc(self->image_buffer_alloc);
   self->image_buffer_len = 0;
 
@@ -1771,27 +1807,83 @@ fpc_dev_identify(FpDevice *device)
   }
 }
 
+/* Suspend устройства */
+static void
+fpc_dev_suspend(FpDevice *device)
+{
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  
+  fpc_dbg(self, "Suspending device");
+  
+  /* Отменяем текущую операцию если есть */
+  if (self->state != FPC_STATE_NONE)
+  {
+    self->cancelling = TRUE;
+    fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, NULL);
+  }
+  
+  /* Очищаем TLS сессию */
+  fpc_tls_cleanup(self);
+  
+  fpi_device_suspend_complete(device, NULL);
+}
+
+/* Resume устройства */
+static void
+fpc_dev_resume(FpDevice *device)
+{
+  FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  
+  fpc_dbg(self, "Resuming device");
+  
+  /* Переинициализируем TLS при возобновлении */
+  self->tls_ready = FALSE;
+  
+  fpi_device_resume_complete(device, NULL);
+}
+
 /* Отмена текущей операции */
 static void
 fpc_dev_cancel(FpDevice *device)
 {
   FpiDeviceFpcA921 *self = FPI_DEVICE_FPC_A921(device);
+  GCancellable *cancellable;
 
-  fpc_dbg(self, "Cancelling operation");
+  fpc_dbg(self, "Cancelling operation (state=%s)", 
+          fpc_state_to_string(self->state));
 
-  /* Если уже не отменено и есть активное состояние */
-  if (!self->cancelling && self->state != FPC_STATE_NONE)
+  /* Если уже отменяется или нет активной операции */
+  if (self->cancelling || self->state == FPC_STATE_NONE)
   {
-    self->cancelling = TRUE;
-    /* 
-* Важно: отправляем команду ABORT на устройство, чтобы вывести его 
-* из режима ожидания пальца. Используем колбэк, чтобы дождаться подтверждения.
-*/
+    fpc_dbg(self, "Already cancelling or no active operation");
+    return;
+  }
+
+  self->cancelling = TRUE;
+
+  /* Отменяем все pending USB transfers через cancellable */
+  cancellable = fpi_device_get_cancellable(device);
+  if (cancellable)
+  {
+    g_cancellable_cancel(cancellable);
+  }
+
+  /* Пытаемся отправить ABORT только если не в процессе TLS handshake */
+  if (self->state != FPC_STATE_TLS_DO_HANDSHAKE &&
+      self->state != FPC_STATE_TLS_SEND_CHUNKS &&
+      self->state != FPC_STATE_TLS_RECV_DATA)
+  {
+    /* Отправляем ABORT команду (может не сработать если transfer отменен) */
     fpc_send_ctrl_cmd(self, CMD_ABORT, 0x0001, 0, NULL, 0, fpc_abort_cmd_cb);
   }
   else
-{
-    fpc_dbg(self, "No active operation to cancel");
+  {
+    /* В процессе TLS - просто очищаем состояние */
+    fpc_dbg(self, "Cancelling during TLS, cleaning up");
+    fpc_tls_cleanup(self);
+    self->tls_ready = FALSE;
+    self->cancelling = FALSE;
+    fpc_set_state(self, FPC_STATE_NONE);
   }
 }
 
@@ -1865,6 +1957,7 @@ fpi_device_fpc_a921_class_init(FpiDeviceFpcA921Class *klass)
   dev_class->id_table = fpc_id_table;
   dev_class->scan_type = FP_SCAN_TYPE_PRESS;
   dev_class->nr_enroll_stages = ENROLL_STAGES;
+  dev_class->temp_hot_seconds = -1;
 
   /* Поддерживаемые функции */
   dev_class->features = FP_DEVICE_FEATURE_CAPTURE |
@@ -1879,4 +1972,6 @@ fpi_device_fpc_a921_class_init(FpiDeviceFpcA921Class *klass)
   dev_class->identify = fpc_dev_identify;
   dev_class->capture = fpc_dev_capture;
   dev_class->cancel = fpc_dev_cancel;
+  dev_class->suspend = fpc_dev_suspend;
+  dev_class->resume = fpc_dev_resume;
 }
